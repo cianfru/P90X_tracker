@@ -97,13 +97,19 @@ un-merged).
 
 ## Build phases (one at a time, confirm between)
 
-1. ✅ **Scaffold** `/web` (PWA installs + loads offline). — DONE
-2. **Data model**: Dexie schema + TS types; seed exercise catalog (aliases) + templates.
-3. **Logger UI**: port `workout-logger.jsx`, wired to Dexie (Home / Session / Monitor shell).
-4. **History import**: run `/import` → `seed.json` → seed Dexie; validate counts.
-5. **Analytics**: implement the Monitor computations over Dexie.
-6. **Backend sync**: FastAPI endpoints + Postgres DDL + client outbox + reconcile.
-7. **Ship**: deploy `/web` (Vercel) + `/api` (Railway/Pi); Lighthouse PWA; iPhone test.
+1. ✅ **Scaffold** `/web` (PWA installs + loads offline).
+2. ✅ **Data model**: Dexie schema + TS types; seeded catalog (145 exercises, aliases,
+   official displayNames) + 9 templates.
+3. ✅ **Logger UI**: Home / Session wired to Dexie (steppers, modifier chips, struggle,
+   auto rounds, two-tap log, soft-delete).
+4. ✅ **History import**: `history.json` → Dexie (chunked, resumable). 18,088 clean sets
+   after removing meta rows + typo values (raw parse matched the reference at 18,841).
+5. ✅ **Analytics**: Monitor over Dexie (progression + PR, harder-variant share, tonnage,
+   consistency, struggle/year, movers, routines). KPIs validated.
+6. ✅ **Backend sync**: FastAPI `/sync/push` + `/sync/pull` + Postgres; client outbox +
+   reconcile; offline→online + soft-delete propagation verified.
+7. 🚢 **Ship**: `/web` → Vercel, `/api` → Railway/Pi. See `docs/deploy.md` (runbook +
+   Lighthouse checklist + iPhone test); needs the owner's accounts to execute.
 
 ## Dev
 

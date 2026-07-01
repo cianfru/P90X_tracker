@@ -12,6 +12,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'icon.svg'],
       manifest: {
+        id: '/',
         name: 'P90X Logger',
         short_name: 'P90X',
         description:

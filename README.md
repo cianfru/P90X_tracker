@@ -33,7 +33,15 @@ rules, the analytics spec, and the phased build plan.
 
 ## Status
 
-- **Phase 1 — Scaffold**: ✅ installable PWA shell, offline app-shell caching
-  verified (loads with no network), Train/Monitor frame.
-- Phases 2–7: data model → logger UI → history import → analytics → backend sync
-  → ship. See `CLAUDE.md`.
+- ✅ **1 Scaffold** — installable, offline-capable PWA shell.
+- ✅ **2 Data model** — Dexie schema + types; 145-exercise catalog + 9 templates.
+- ✅ **3 Logger** — Home/Session, two-tap logging wired to Dexie.
+- ✅ **4 History** — 7 years (18,088 clean sets) imported on first run.
+- ✅ **5 Analytics** — Monitor: progression/PRs, harder-variant share, tonnage,
+  consistency, struggle, movers.
+- ✅ **6 Sync** — FastAPI + Postgres `/sync`; client outbox/reconcile; offline→online
+  verified.
+- 🚢 **7 Ship** — deploy runbook in [`docs/deploy.md`](./docs/deploy.md)
+  (Vercel + Railway/Pi, Lighthouse, iPhone). Runs on your accounts.
+
+See [`CLAUDE.md`](./CLAUDE.md) for details.
