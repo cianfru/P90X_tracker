@@ -241,8 +241,7 @@
       "name": "Biceps LO",
       "canonicalName": "Biceps LO",
       "type": "weighted",
-      "aliases": ["One-Arm Concentration Curls"],
-      "displayName": "One-Arm Concentration Curls"
+      "aliases": []
     },
     {
       "id": "biceps-bands",
