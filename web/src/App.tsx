@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Dumbbell, TrendingUp, WifiOff, Wifi } from 'lucide-react'
+import { Dumbbell, Loader2, TrendingUp, WifiOff, Wifi } from 'lucide-react'
 import { useOnlineStatus } from './lib/useOnlineStatus'
-import { ensureSeeded } from './db'
+import { ensureSeeded, needsHistorySeed, seedHistory } from './db'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
 
@@ -16,10 +16,23 @@ type View = 'home' | 'monitor'
 export default function App() {
   const [view, setView] = useState<View>('home')
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [importPct, setImportPct] = useState<number | null>(null)
   const online = useOnlineStatus()
 
   useEffect(() => {
-    void ensureSeeded()
+    void (async () => {
+      await ensureSeeded()
+      if (await needsHistorySeed()) {
+        setImportPct(0)
+        try {
+          await seedHistory((done, total) =>
+            setImportPct(Math.round((done / total) * 100)),
+          )
+        } finally {
+          setImportPct(null)
+        }
+      }
+    })()
   }, [])
 
   if (sessionId) {
@@ -39,7 +52,14 @@ export default function App() {
             Local-first · works fully offline
           </p>
         </div>
-        <ConnPill online={online} />
+        {importPct !== null ? (
+          <span className="flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 font-mono text-xs text-sky-300">
+            <Loader2 size={13} className="animate-spin" />
+            importing {importPct}%
+          </span>
+        ) : (
+          <ConnPill online={online} />
+        )}
       </header>
 
       <main className="flex-1 px-4 pb-24">

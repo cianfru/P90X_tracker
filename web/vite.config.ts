@@ -38,6 +38,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
+        // history.json (~2.6 MB) is imported into IndexedDB on first run; keep it
+        // out of precache but cache-first at runtime so a re-seed works offline.
+        runtimeCaching: [
+          {
+            urlPattern: /\/history\.json$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'p90x-history',
+              expiration: { maxEntries: 1 },
+            },
+          },
+        ],
       },
       devOptions: {
         // Let us verify install + offline behaviour in `npm run dev`.
