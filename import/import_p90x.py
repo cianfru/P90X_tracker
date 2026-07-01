@@ -63,8 +63,15 @@ def rxw(s): return re.search(r"(\d+)\s*x\s*(\d+)", s.lower())
 def parse_value(v, exercise):
     """Return dict(reps, weightKg, modifiers, struggle) or None."""
     if v is None: return None
+    # Excel silently converted a typed integer into a date — the day is the value.
+    if isinstance(v, datetime.datetime):
+        return {"reps": v.day, "weightKg": None, "modifiers": [], "struggle": False}
     s = str(v).strip()
     if not s: return None
+    # Bare 3-digit value = "RxW" shorthand typed without the x (e.g. 820 → 8×20).
+    if re.fullmatch(r"\d{3}", s):
+        val = int(s)
+        return {"reps": val // 100, "weightKg": val % 100, "modifiers": [], "struggle": False}
     mods, struggle = [], False
     if any(e in s for e in ["\U0001F613", "\U0001F975", "\U0001F624"]): struggle = True
     low = s.lower()
@@ -87,6 +94,9 @@ def parse_value(v, exercise):
             d = re.search(r"(\d+)", s)
             if d: reps = int(d[1])
     if reps is None: return None
+    # Implausible bodyweight rep count = a number embedded in a note (e.g. the
+    # "180" in "Cavi180lb"); no real move exceeds ~120 bodyweight reps.
+    if weight is None and reps > 120: return None
     return {"reps": reps, "weightKg": weight, "modifiers": mods, "struggle": struggle}
 
 def main(path):
@@ -113,6 +123,8 @@ def main(path):
             name = str(raw).strip()
             # Skip divider/label rows that carry no exercise name (e.g. 💦💦💦).
             if not re.search(r"[A-Za-z0-9]", name): continue
+            # Skip non-exercise meta rows (form rating / self-assessment / gym).
+            if name in ("Form", "Fitness level", "Location"): continue
             forced_base, forced_mod = FORCE_MOVE_MOD.get(name, (None, None))
             ex = canon(forced_base or name)
             if ex not in order: order.append(ex)

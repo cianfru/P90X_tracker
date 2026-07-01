@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Dumbbell, Loader2, TrendingUp, WifiOff, Wifi } from 'lucide-react'
 import { useOnlineStatus } from './lib/useOnlineStatus'
 import { ensureSeeded, needsHistorySeed, seedHistory } from './db'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
+
+// Charts (Recharts) are heavy — load them only when the Monitor is opened so the
+// gym-side logger stays lightweight.
+const Monitor = lazy(() =>
+  import('./monitor/Monitor').then((m) => ({ default: m.Monitor })),
+)
 
 /*
  * App shell + navigation. Home and Session (the logger) are wired to Dexie;
@@ -63,7 +69,19 @@ export default function App() {
       </header>
 
       <main className="flex-1 px-4 pb-24">
-        {view === 'home' ? <Home onOpen={setSessionId} /> : <MonitorPlaceholder />}
+        {view === 'home' ? (
+          <Home onOpen={setSessionId} />
+        ) : (
+          <Suspense
+            fallback={
+              <div className="mt-16 text-center font-mono text-sm text-zinc-500">
+                loading analytics…
+              </div>
+            }
+          >
+            <Monitor />
+          </Suspense>
+        )}
       </main>
 
       <NavBar view={view} setView={setView} />
@@ -84,22 +102,6 @@ function ConnPill({ online }: { online: boolean }) {
       {online ? <Wifi size={13} /> : <WifiOff size={13} />}
       {online ? 'online' : 'offline'}
     </span>
-  )
-}
-
-function MonitorPlaceholder() {
-  return (
-    <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
-      <div className="flex items-center gap-3">
-        <TrendingUp size={26} className="text-sky-400/70" />
-        <h2 className="text-lg font-semibold">Monitor</h2>
-      </div>
-      <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-        Seven years of progression — PRs, tonnage, consistency, the harder-variant
-        story. Analytics arrive in Phase 5, computed on-device so they work offline
-        too.
-      </p>
-    </div>
   )
 }
 
