@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+
+/*
+  Design tokens lifted from the logger prototype + monitor dashboard so the two
+  surfaces share one visual language: zinc-950 canvas, emerald primary action,
+  sky for weight, amber for "harder" modifiers, rose for struggle.
+*/
+@theme {
+  --color-canvas: #09090b;
+  --color-panel: #111722;
+  --color-panel-2: #0e141e;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #09090b;
+  color: #e8edf5;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Respect the iPhone safe areas when installed to the home screen. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}

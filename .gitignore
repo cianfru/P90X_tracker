@@ -1,0 +1,19 @@
+# Node (web/.gitignore covers most of /web; this catches strays repo-wide)
+node_modules/
+dist/
+*.log
+
+# Python (import)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.swp
