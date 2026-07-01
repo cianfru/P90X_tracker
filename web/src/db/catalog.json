@@ -117,7 +117,8 @@
       "name": "40 rows",
       "canonicalName": "40 rows",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Congdon Locomotives"],
+      "displayName": "Congdon Locomotives"
     },
     {
       "id": "6-sh-flys",
@@ -232,14 +233,16 @@
       "name": "Biceps",
       "canonicalName": "Biceps",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Full Supination Concentration Curls"],
+      "displayName": "Full Supination Concentration Curls"
     },
     {
       "id": "biceps-lo",
       "name": "Biceps LO",
       "canonicalName": "Biceps LO",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["One-Arm Concentration Curls"],
+      "displayName": "One-Arm Concentration Curls"
     },
     {
       "id": "biceps-bands",
@@ -425,7 +428,8 @@
       "name": "DS",
       "canonicalName": "DS",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["80/20 Siebers-Speed Squats"],
+      "displayName": "80/20 Siebers-Speed Squats"
     },
     {
       "id": "dead-lift",
@@ -937,7 +941,8 @@
       "name": "Squats",
       "canonicalName": "Squats",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Calf-Raise Squats"],
+      "displayName": "Calf-Raise Squats"
     },
     {
       "id": "stab-ball-lo",
