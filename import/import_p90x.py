@@ -8,7 +8,7 @@ in the build brief (swapped dates, reps x kg, a+b, typed modifiers, rounds).
 
 Usage: python import_p90x.py P90X.xlsx > seed.json
 """
-import sys, re, json, datetime, uuid
+import sys, re, json, datetime, uuid, collections
 import openpyxl
 
 # Exercises that are pulls (modifier semantics: L/X = harder, band = lighter travel).
@@ -17,12 +17,27 @@ PULL = {"Chin ups", "Wide pull", "Pull ups", "Pullups", "Closed grip", "Close gr
         "Zip kip chin", "Admins chin ups"}
 
 # Canonicalize obvious aliases / typos so data never fragments.
+# The last block (below "Heavy P.") was confirmed with the owner in Phase 2:
+# pure spelling/punctuation variants of the same movement.
 ALIASES = {
     "Closed grip": "Close grip", "Close grip pull": "Close grip",
     "Pullups": "Pull ups", "Swith grip": "Switch grip",
     "Heavy p": "Heavy P.", "Heavy P": "Heavy P.",
+    "Declined Push": "Decline push",
+    "Side tris rise": "Side tri rise",
+    "Balanced curls": "Balance curls",
+    "Laying down tris": "Lay down tris",
+    "Lawn": "Lawn.",
+    "Renegade roman": "Renegade row",
 }
 def canon(name): return ALIASES.get(name, name)
+
+# Exercises logged under their own row that are really a standard move done with
+# a harder modifier — fold into the base move and force the modifier so the
+# baseline + harder-variant analytics stay correct (Phase 2 decision).
+FORCE_MOVE_MOD = {
+    "L pullups": ("Pull ups", "L_sit"),
+}
 
 def parse_date(v):
     """Row-1 dates: dd/mm/yy strings, OR Excel datetimes with day/month SWAPPED."""
@@ -95,20 +110,25 @@ def main(path):
             raw = ws.cell(r, 1).value
             if not raw or not str(raw).strip(): continue
             name = str(raw).strip()
-            if name in ("\U0001F4A6", "\U0001F525", "\U0001F4AA"): continue
-            ex = canon(name)
+            # Skip divider/label rows that carry no exercise name (e.g. 💦💦💦).
+            if not re.search(r"[A-Za-z0-9]", name): continue
+            forced_base, forced_mod = FORCE_MOVE_MOD.get(name, (None, None))
+            ex = canon(forced_base or name)
             if ex not in order: order.append(ex)
             for c, d in datecols.items():
                 if d > today: continue          # clip stray future dates
                 pv = parse_value(ws.cell(r, c).value, name)
                 if not pv: continue
+                mods = pv["modifiers"]
+                if forced_mod and forced_mod not in mods:
+                    mods = mods + [forced_mod]
                 key = (c, ex)
                 round_counter[key] = round_counter.get(key, 0) + 1
                 ex_types.setdefault(ex, []).append(pv["weightKg"] is not None)
                 col_sets[c].append({
                     "id": str(uuid.uuid4()), "exercise": ex,
                     "reps": pv["reps"], "weightKg": pv["weightKg"],
-                    "round": round_counter[key], "modifiers": pv["modifiers"],
+                    "round": round_counter[key], "modifiers": mods,
                     "struggle": pv["struggle"],
                 })
         ex_seen_order[workout] = order
@@ -117,8 +137,15 @@ def main(path):
             sessions.append({"id": str(uuid.uuid4()), "date": d.isoformat(),
                              "workout": workout, "sets": col_sets[c]})
 
+    # Reverse the canonicalization maps so each exercise carries its known aliases.
+    alias_map = collections.defaultdict(list)
+    for a, c in ALIASES.items():
+        alias_map[c].append(a)
+    for a, (base, _mod) in FORCE_MOVE_MOD.items():
+        alias_map[base].append(a)
     exercises = [{"name": e, "canonicalName": e,
-                  "type": "weighted" if sum(v) > len(v) / 2 else "bodyweight"}
+                  "type": "weighted" if sum(v) > len(v) / 2 else "bodyweight",
+                  "aliases": sorted(alias_map.get(e, []))}
                  for e, v in sorted(ex_types.items())]
     templates = [{"name": wk, "exercises": [canon(x) for x in order]}
                  for wk, order in ex_seen_order.items()]

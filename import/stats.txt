@@ -1,5 +1,2 @@
-# Import validation (assets/P90X.xlsx -> import/seed.json)
-791 sessions, 18841 sets, 152 exercises
-Date range: 2019-01-13 -> 2026-06-28
-Modifiers: L_sit 399, trx 107, band_travel 35, no_kip 34, full_rom 14, wide_X 5
-Struggle sets: 302; Weighted sets: 9956
+
+# 791 sessions, 18841 sets, 145 exercises

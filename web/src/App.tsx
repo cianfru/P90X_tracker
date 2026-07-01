@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Dumbbell, TrendingUp, WifiOff, Wifi } from 'lucide-react'
 import { useOnlineStatus } from './lib/useOnlineStatus'
+import { db, ensureSeeded } from './db'
 
 /*
- * Phase 1 — app shell only.
+ * Phase 2 — data model in place.
  *
- * This establishes the installable, offline-capable PWA frame (header + bottom
- * nav + Train/Monitor routes). The real logger (ported from the prototype,
- * wired to Dexie) lands in Phase 3, and the analytics Monitor in Phase 5. The
- * placeholder screens below intentionally hold that space.
+ * The Dexie schema, typed models, and bundled exercise catalog + workout
+ * templates are seeded on boot. The frame still shows placeholders; the real
+ * logger (Phase 3) and analytics Monitor (Phase 5) fill them in. The Home
+ * placeholder now reads live counts straight from IndexedDB to prove the wiring.
  */
 
 type View = 'home' | 'monitor'
@@ -17,6 +19,11 @@ type View = 'home' | 'monitor'
 export default function App() {
   const [view, setView] = useState<View>('home')
   const online = useOnlineStatus()
+
+  // Populate the bundled catalog/templates on first paint (idempotent upsert).
+  useEffect(() => {
+    void ensureSeeded()
+  }, [])
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col">
@@ -56,12 +63,28 @@ function ConnPill({ online }: { online: boolean }) {
 }
 
 function HomePlaceholder() {
+  const exerciseCount = useLiveQuery(() => db.exercises.count())
+  const templateCount = useLiveQuery(() => db.templates.count())
+  const seeded = exerciseCount !== undefined && exerciseCount > 0
+
   return (
-    <Placeholder
-      icon={<Dumbbell size={26} className="text-emerald-400/70" />}
-      title="Train"
-      body="Pick a workout and log sets two taps at a time. The logger UI arrives in Phase 3, wired to an on-device database so it never waits on the network."
-    />
+    <>
+      <Placeholder
+        icon={<Dumbbell size={26} className="text-emerald-400/70" />}
+        title="Train"
+        body="Pick a workout and log sets two taps at a time. The logger UI arrives in Phase 3, wired to an on-device database so it never waits on the network."
+      />
+      <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-3">
+        <p className="font-mono text-xs tracking-wide text-zinc-500">
+          on-device catalog
+        </p>
+        <p className="mt-1 font-mono text-sm text-emerald-300">
+          {seeded
+            ? `${exerciseCount} exercises · ${templateCount} workouts`
+            : 'seeding…'}
+        </p>
+      </div>
+    </>
   )
 }
 
