@@ -5,91 +5,112 @@
       "name": "1 arm balance push",
       "canonicalName": "1 arm balance push",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["\u0007One-Arm Balance Push-Ups"],
+      "displayName": "\u0007One-Arm Balance Push-Ups"
     },
     {
       "id": "1-arm-push",
       "name": "1 arm push",
       "canonicalName": "1 arm push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["One-Arm Push-Ups"],
+      "displayName": "One-Arm Push-Ups"
     },
     {
       "id": "2-speed-push",
       "name": "2 speed Push",
       "canonicalName": "2 speed Push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Two-Twitch Speed Push-Ups"],
+      "displayName": "Two-Twitch Speed Push-Ups"
     },
     {
       "id": "2-ways-flys",
       "name": "2 ways flys",
       "canonicalName": "2 ways flys",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Seated Two-Angle Shoulder Flys"],
+      "displayName": "Seated Two-Angle Shoulder Flys"
     },
     {
       "id": "2-ways-shldr",
       "name": "2 ways shldr",
       "canonicalName": "2 ways shldr",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["In & Out Shoulder Flys"],
+      "displayName": "In & Out Shoulder Flys"
     },
     {
       "id": "21-pulls",
       "name": "21 pulls",
       "canonicalName": "21 pulls",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["21 Pull-Up"],
+      "displayName": "21 Pull-Up"
     },
     {
       "id": "2x-circle-fly",
       "name": "2x circle fly",
       "canonicalName": "2x circle fly",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["X2 Circle Fly"],
+      "displayName": "X2 Circle Fly"
     },
     {
       "id": "3-ball-plyo-push",
       "name": "3 ball plyo push",
       "canonicalName": "3 ball plyo push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["3-Ball Plyo Push-Up"],
+      "displayName": "3-Ball Plyo Push-Up"
     },
     {
       "id": "3-balls-dips",
       "name": "3 balls dips",
       "canonicalName": "3 balls dips",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["3-Ball Dip"],
+      "displayName": "3-Ball Dip"
     },
     {
       "id": "3-balls-extravaganza",
       "name": "3 balls extravaganza",
       "canonicalName": "3 balls extravaganza",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["3-Ball Extravaganza"],
+      "displayName": "3-Ball Extravaganza"
     },
     {
       "id": "3-in1-push",
       "name": "3 in1 push",
       "canonicalName": "3 in1 push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Slow-Motion 3-in-1 Push-Ups"],
+      "displayName": "Slow-Motion 3-in-1 Push-Ups"
+    },
+    {
+      "id": "3-ways",
+      "name": "3 ways",
+      "canonicalName": "3 ways",
+      "type": "bodyweight",
+      "aliases": ["Three-Way Lunge"],
+      "displayName": "Three-Way Lunge"
     },
     {
       "id": "4-balls-push-ups",
       "name": "4 balls Push ups",
       "canonicalName": "4 balls Push ups",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["4-Ball Push-Up"],
+      "displayName": "4-Ball Push-Up"
     },
     {
       "id": "4-grip-pull",
       "name": "4 grip pull",
       "canonicalName": "4 grip pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["4-Grip Pull-Up"],
+      "displayName": "4-Grip Pull-Up"
     },
     {
       "id": "40-rows",
@@ -103,28 +124,32 @@
       "name": "6 sh flys",
       "canonicalName": "6 sh flys",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Six Direction Shoulder Fly"],
+      "displayName": "Six Direction Shoulder Fly"
     },
     {
       "id": "admins-chin-ups",
       "name": "Admins chin ups",
       "canonicalName": "Admins chin ups",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Entman's Chin-Up"],
+      "displayName": "Entman's Chin-Up"
     },
     {
       "id": "alt-hammer",
       "name": "Alt hammer",
       "canonicalName": "Alt hammer",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Alt Hammer Curl"],
+      "displayName": "Alt Hammer Curl"
     },
     {
       "id": "alt-should",
       "name": "Alt should",
       "canonicalName": "Alt should",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Alternating Shoulder Presses"],
+      "displayName": "Alternating Shoulder Presses"
     },
     {
       "id": "alternate-arnold-p",
@@ -159,42 +184,48 @@
       "name": "Arnold press",
       "canonicalName": "Arnold press",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Arnold Press"],
+      "displayName": "Arnold Press"
     },
     {
       "id": "around-the-world",
       "name": "Around the world",
       "canonicalName": "Around the world",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Around the World Pull-Up"],
+      "displayName": "Around the World Pull-Up"
     },
     {
       "id": "back-flys",
       "name": "Back flys",
       "canonicalName": "Back flys",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Back Flys"],
+      "displayName": "Back Flys"
     },
     {
       "id": "balance-curls",
       "name": "Balance curls",
       "canonicalName": "Balance curls",
       "type": "weighted",
-      "aliases": ["Balanced curls"]
+      "aliases": ["Balance Curl", "Balanced curls"],
+      "displayName": "Balance Curl"
     },
     {
       "id": "ball-preacher",
       "name": "Ball preacher",
       "canonicalName": "Ball preacher",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Ball Preacher"],
+      "displayName": "Ball Preacher"
     },
     {
       "id": "band-rows",
       "name": "Band rows",
       "canonicalName": "Band rows",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Wide Leg Row Twist"],
+      "displayName": "Wide Leg Row Twist"
     },
     {
       "id": "biceps",
@@ -215,147 +246,172 @@
       "name": "Biceps bands",
       "canonicalName": "Biceps bands",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Band Bicep Curl"],
+      "displayName": "Band Bicep Curl"
     },
     {
       "id": "biceps-curls",
       "name": "Biceps curls",
       "canonicalName": "Biceps curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Standing Bicep Curls"],
+      "displayName": "Standing Bicep Curls"
     },
     {
       "id": "calf-raises",
       "name": "Calf raises",
       "canonicalName": "Calf raises",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Calf Raises"],
+      "displayName": "Calf Raises"
     },
     {
       "id": "callahan-press",
       "name": "Callahan press",
       "canonicalName": "Callahan press",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Callahan Press"],
+      "displayName": "Callahan Press"
     },
     {
       "id": "chair",
       "name": "Chair",
       "canonicalName": "Chair",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Chair Salutations"],
+      "displayName": "Chair Salutations"
     },
     {
       "id": "chattarocker",
       "name": "Chattarocker",
       "canonicalName": "Chattarocker",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Chattarocker"],
+      "displayName": "Chattarocker"
     },
     {
       "id": "chin-pull",
       "name": "Chin pull",
       "canonicalName": "Chin pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Chin Pull"],
+      "displayName": "Chin Pull"
     },
     {
       "id": "chin-ups",
       "name": "Chin ups",
       "canonicalName": "Chin ups",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Reverse Grip Chin-Ups"],
+      "displayName": "Reverse Grip Chin-Ups"
     },
     {
       "id": "circle",
       "name": "Circle",
       "canonicalName": "Circle",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["\u0007Weighted Circles"],
+      "displayName": "\u0007Weighted Circles"
     },
     {
       "id": "clap-push",
       "name": "Clap push",
       "canonicalName": "Clap push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Clap or Plyo Push-Ups"],
+      "displayName": "Clap or Plyo Push-Ups"
     },
     {
       "id": "close-body-curls",
       "name": "Close body curls",
       "canonicalName": "Close body curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Close Body Curl"],
+      "displayName": "Close Body Curl"
     },
     {
       "id": "close-grip",
       "name": "Close grip",
       "canonicalName": "Close grip",
       "type": "bodyweight",
-      "aliases": ["Close grip pull", "Closed grip"]
+      "aliases": [
+        "Close grip pull",
+        "Closed Grip Overhand Pull-Ups",
+        "Closed grip"
+      ],
+      "displayName": "Closed Grip Overhand Pull-Ups"
     },
     {
       "id": "condon-curls",
       "name": "Condon curls",
       "canonicalName": "Condon curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Congdon Curls"],
+      "displayName": "Congdon Curls"
     },
     {
       "id": "corn-cub-pull",
       "name": "Corn cub pull",
       "canonicalName": "Corn cub pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Corn Cob Pull-Ups"],
+      "displayName": "Corn Cob Pull-Ups"
     },
     {
       "id": "crazy-8",
       "name": "Crazy 8",
       "canonicalName": "Crazy 8",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Crazy Eight"],
+      "displayName": "Crazy Eight"
     },
     {
       "id": "cross-body-blows",
       "name": "Cross body blows",
       "canonicalName": "Cross body blows",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Dumbbell Cross-Body Blows"],
+      "displayName": "Dumbbell Cross-Body Blows"
     },
     {
       "id": "cross-body-curl",
       "name": "Cross body curl",
       "canonicalName": "Cross body curl",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["One-Arm Cross-Body Curls"],
+      "displayName": "One-Arm Cross-Body Curls"
     },
     {
       "id": "crouching-biceps",
       "name": "Crouching biceps",
       "canonicalName": "Crouching biceps",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Crouching Cohen Curls"],
+      "displayName": "Crouching Cohen Curls"
     },
     {
       "id": "crouching-curls",
       "name": "Crouching curls",
       "canonicalName": "Crouching curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Crouching Cohen Curls"],
+      "displayName": "Crouching Cohen Curls"
     },
     {
       "id": "crunch-chin",
       "name": "Crunch chin",
       "canonicalName": "Crunch chin",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Core Crunch Chin-Up"],
+      "displayName": "Core Crunch Chin-Up"
     },
     {
       "id": "curl-up-hammer-dwn",
       "name": "Curl up hammer dwn",
       "canonicalName": "Curl up hammer dwn",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Curl-Up/Hammer Downs"],
+      "displayName": "Curl-Up/Hammer Downs"
     },
     {
       "id": "db-press",
@@ -376,63 +432,72 @@
       "name": "Dead lift",
       "canonicalName": "Dead lift",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Deadlift Squats"],
+      "displayName": "Deadlift Squats"
     },
     {
       "id": "decline-push",
       "name": "Decline push",
       "canonicalName": "Decline push",
       "type": "bodyweight",
-      "aliases": ["Declined Push"]
+      "aliases": ["Decline Push-Ups", "Declined Push"],
+      "displayName": "Decline Push-Ups"
     },
     {
       "id": "diamond",
       "name": "Diamond",
       "canonicalName": "Diamond",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Diamond Push-Ups"],
+      "displayName": "Diamond Push-Ups"
     },
     {
       "id": "dips",
       "name": "Dips",
       "canonicalName": "Dips",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Chair Dips"],
+      "displayName": "Chair Dips"
     },
     {
       "id": "dive-bomb",
       "name": "Dive bomb",
       "canonicalName": "Dive bomb",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Dive-Bomber Push-Ups"],
+      "displayName": "Dive-Bomber Push-Ups"
     },
     {
       "id": "double-wide-pull",
       "name": "Double wide pull",
       "canonicalName": "Double wide pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Double Wide Pull-Up"],
+      "displayName": "Double Wide Pull-Up"
     },
     {
       "id": "duoble-wide-push",
       "name": "Duoble wide push",
       "canonicalName": "Duoble wide push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Double Wide Push-Up"],
+      "displayName": "Double Wide Push-Up"
     },
     {
       "id": "elbow-out-lo",
       "name": "Elbow out LO",
       "canonicalName": "Elbow out LO",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Elbows-Out Lawnmowers"],
+      "displayName": "Elbows-Out Lawnmowers"
     },
     {
       "id": "elevated-push-ball",
       "name": "Elevated push (ball)",
       "canonicalName": "Elevated push (ball)",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Elevated Stability Ball Push-Up"],
+      "displayName": "Elevated Stability Ball Push-Up"
     },
     {
       "id": "fitness-level",
@@ -446,21 +511,24 @@
       "name": "Flip grip",
       "canonicalName": "Flip grip",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Flip-Grip Twist Triceps Kickbacks"],
+      "displayName": "Flip-Grip Twist Triceps Kickbacks"
     },
     {
       "id": "floor-flys",
       "name": "Floor flys",
       "canonicalName": "Floor flys",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Floor Flys"],
+      "displayName": "Floor Flys"
     },
     {
       "id": "fly-row-press",
       "name": "Fly row press",
       "canonicalName": "Fly row press",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Fly-Row-Presses"],
+      "displayName": "Fly-Row-Presses"
     },
     {
       "id": "flys",
@@ -481,70 +549,80 @@
       "name": "Front to back tris",
       "canonicalName": "Front to back tris",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Front-to-Back Triceps Extensions"],
+      "displayName": "Front-to-Back Triceps Extensions"
     },
     {
       "id": "fugly-pulls",
       "name": "Fugly pulls",
       "canonicalName": "Fugly pulls",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Cross Fugly Pull-Up"],
+      "displayName": "Cross Fugly Pull-Up"
     },
     {
       "id": "graucho-walk",
       "name": "Graucho walk",
       "canonicalName": "Graucho walk",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Groucho Walk"],
+      "displayName": "Groucho Walk"
     },
     {
       "id": "heavy-p",
       "name": "Heavy P.",
       "canonicalName": "Heavy P.",
       "type": "weighted",
-      "aliases": ["Heavy P", "Heavy p"]
+      "aliases": ["Heavy P", "Heavy Pants", "Heavy p"],
+      "displayName": "Heavy Pants"
     },
     {
       "id": "high-reps-curls",
       "name": "High reps curls",
       "canonicalName": "High reps curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["High-Rep Balance Curl"],
+      "displayName": "High-Rep Balance Curl"
     },
     {
       "id": "hummer",
       "name": "Hummer",
       "canonicalName": "Hummer",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Hammer Curls"],
+      "displayName": "Hammer Curls"
     },
     {
       "id": "impossible-possible",
       "name": "Impossible possible",
       "canonicalName": "Impossible possible",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["The Impossible/Possible"],
+      "displayName": "The Impossible/Possible"
     },
     {
       "id": "in-and-out-biceps",
       "name": "In & out biceps",
       "canonicalName": "In & out biceps",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["In & Out Bicep Curls"],
+      "displayName": "In & Out Bicep Curls"
     },
     {
       "id": "in-and-out",
       "name": "In&out",
       "canonicalName": "In&out",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["In & Out"],
+      "displayName": "In & Out"
     },
     {
       "id": "in-and-out-hammer",
       "name": "In&out hammer",
       "canonicalName": "In&out hammer",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["In-Out Hammer Curls"],
+      "displayName": "In-Out Hammer Curls"
     },
     {
       "id": "inverted-shoulders",
@@ -558,21 +636,24 @@
       "name": "Lawn.",
       "canonicalName": "Lawn.",
       "type": "weighted",
-      "aliases": ["Lawn"]
+      "aliases": ["Lawn", "Lawnmowers"],
+      "displayName": "Lawnmowers"
     },
     {
       "id": "lay-down-tris",
       "name": "Lay down tris",
       "canonicalName": "Lay down tris",
       "type": "weighted",
-      "aliases": ["Laying down tris"]
+      "aliases": ["Laying down tris", "Lying-Down Triceps Extensions"],
+      "displayName": "Lying-Down Triceps Extensions"
     },
     {
       "id": "lever",
       "name": "Lever",
       "canonicalName": "Lever",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Lever"],
+      "displayName": "Lever"
     },
     {
       "id": "location",
@@ -586,49 +667,56 @@
       "name": "Lounch lounges",
       "canonicalName": "Lounch lounges",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Balanced Lunges"],
+      "displayName": "Balanced Lunges"
     },
     {
       "id": "lounges",
       "name": "Lounges",
       "canonicalName": "Lounges",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Sneaky Lunge"],
+      "displayName": "Sneaky Lunge"
     },
     {
       "id": "max-rep-pull",
       "name": "Max rep pull",
       "canonicalName": "Max rep pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Max Rep Pull-Ups"],
+      "displayName": "Max Rep Pull-Ups"
     },
     {
       "id": "med-biceps",
       "name": "Med biceps",
       "canonicalName": "Med biceps",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Med Ball Renegade Curl"],
+      "displayName": "Med Ball Renegade Curl"
     },
     {
       "id": "military",
       "name": "Military",
       "canonicalName": "Military",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Military Push-Ups"],
+      "displayName": "Military Push-Ups"
     },
     {
       "id": "open-arm-curl",
       "name": "Open arm curl",
       "canonicalName": "Open arm curl",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Open-Arm Curls"],
+      "displayName": "Open-Arm Curls"
     },
     {
       "id": "overhead-tris",
       "name": "Overhead tris",
       "canonicalName": "Overhead tris",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Overhead Triceps Extensions"],
+      "displayName": "Overhead Triceps Extensions"
     },
     {
       "id": "parallels",
@@ -642,70 +730,88 @@
       "name": "Pike press",
       "canonicalName": "Pike press",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Pike Presses"],
+      "displayName": "Pike Presses"
     },
     {
       "id": "plange-push",
       "name": "Plange push",
       "canonicalName": "Plange push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Plange Push-Ups"],
+      "displayName": "Plange Push-Ups"
     },
     {
       "id": "plyos",
       "name": "Plyos",
       "canonicalName": "Plyos",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Plyo Stability Ball Push-Up"],
+      "displayName": "Plyo Stability Ball Push-Up"
     },
     {
       "id": "pour-flys",
       "name": "Pour flys",
       "canonicalName": "Pour flys",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Pour Flys"],
+      "displayName": "Pour Flys"
     },
     {
       "id": "pull-up-x",
       "name": "Pull up x",
       "canonicalName": "Pull up x",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Pull-Up X"],
+      "displayName": "Pull-Up X"
     },
     {
       "id": "pull-ups",
       "name": "Pull ups",
       "canonicalName": "Pull ups",
       "type": "bodyweight",
-      "aliases": ["L pullups", "Pullups"]
+      "aliases": ["L pullups", "Pull-Ups", "Pullups"],
+      "displayName": "Pull-Ups"
     },
     {
       "id": "pull-x",
       "name": "Pull x",
       "canonicalName": "Pull x",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Pull-Up X"],
+      "displayName": "Pull-Up X"
     },
     {
       "id": "renegade-hummers",
       "name": "Renegade hummers",
       "canonicalName": "Renegade hummers",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Renegade Hammer Curl"],
+      "displayName": "Renegade Hammer Curl"
+    },
+    {
+      "id": "renegade-roman",
+      "name": "Renegade roman",
+      "canonicalName": "Renegade roman",
+      "type": "weighted",
+      "aliases": ["Renegade Roman Curl"],
+      "displayName": "Renegade Roman Curl"
     },
     {
       "id": "renegade-row",
       "name": "Renegade row",
       "canonicalName": "Renegade row",
       "type": "weighted",
-      "aliases": ["Renegade roman"]
+      "aliases": ["Med Ball Renegade Row"],
+      "displayName": "Med Ball Renegade Row"
     },
     {
       "id": "reverse-bent-over",
       "name": "Reverse bent over",
       "canonicalName": "Reverse bent over",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Reverse Grip Bent-Over Rows"],
+      "displayName": "Reverse Grip Bent-Over Rows"
     },
     {
       "id": "rocket-launch-tris",
@@ -719,91 +825,112 @@
       "name": "Rocket tris",
       "canonicalName": "Rocket tris",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Rocket Launcher Tricep Kickback"],
+      "displayName": "Rocket Launcher Tricep Kickback"
     },
     {
       "id": "roman-curls",
       "name": "Roman curls",
       "canonicalName": "Roman curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Roman Band Curl"],
+      "displayName": "Roman Band Curl"
     },
     {
       "id": "scarecrows",
       "name": "Scarecrows",
       "canonicalName": "Scarecrows",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Scarecrows"],
+      "displayName": "Scarecrows"
     },
     {
       "id": "screw-curls",
       "name": "Screw curls",
       "canonicalName": "Screw curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["One-Arm Corkscrew Curls"],
+      "displayName": "One-Arm Corkscrew Curls"
     },
     {
       "id": "shoulder-flys",
       "name": "Shoulder flys",
       "canonicalName": "Shoulder flys",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["In & Out Straight-Arm Shoulder Flys"],
+      "displayName": "In & Out Straight-Arm Shoulder Flys"
     },
     {
       "id": "side-arm",
       "name": "Side arm",
       "canonicalName": "Side arm",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Push-Up Side Arm Balance"],
+      "displayName": "Push-Up Side Arm Balance"
     },
     {
       "id": "side-arm-balance",
       "name": "Side arm balance",
       "canonicalName": "Side arm balance",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Push-Up Side Arm Balance"],
+      "displayName": "Push-Up Side Arm Balance"
     },
     {
       "id": "side-leaning",
       "name": "Side leaning",
       "canonicalName": "Side leaning",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Side-Leaning Triceps Extensions"],
+      "displayName": "Side-Leaning Triceps Extensions"
     },
     {
       "id": "side-to-side",
       "name": "Side to side",
       "canonicalName": "Side to side",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Alternating Side Lunge"],
+      "displayName": "Alternating Side Lunge"
     },
     {
       "id": "side-to-side-push",
       "name": "Side to side push",
       "canonicalName": "Side to side push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Side-to-Side Push-Ups"],
+      "displayName": "Side-to-Side Push-Ups"
     },
     {
       "id": "side-tri-rise",
       "name": "Side tri rise",
       "canonicalName": "Side tri rise",
       "type": "bodyweight",
-      "aliases": ["Side tris rise"]
+      "aliases": ["Side Tri-Rises", "Side tris rise"],
+      "displayName": "Side Tri-Rises"
+    },
+    {
+      "id": "single-leg-squat",
+      "name": "Single leg squat",
+      "canonicalName": "Single leg squat",
+      "type": "bodyweight",
+      "aliases": ["Single-Leg Wall Squat"],
+      "displayName": "Single-Leg Wall Squat"
     },
     {
       "id": "skaters",
       "name": "Skaters",
       "canonicalName": "Skaters",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Super Skaters"],
+      "displayName": "Super Skaters"
     },
     {
       "id": "slow-mo-throw",
       "name": "Slow mo throw",
       "canonicalName": "Slow mo throw",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Slo-Mo Throws"],
+      "displayName": "Slo-Mo Throws"
     },
     {
       "id": "squats",
@@ -817,203 +944,232 @@
       "name": "Stab ball LO",
       "canonicalName": "Stab ball LO",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Stability Ball Lawnmower"],
+      "displayName": "Stability Ball Lawnmower"
     },
     {
       "id": "staight-arm-pullover",
       "name": "Staight arm pullover",
       "canonicalName": "Staight arm pullover",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Straight Arm Pullover"],
+      "displayName": "Straight Arm Pullover"
     },
     {
       "id": "static",
       "name": "Static",
       "canonicalName": "Static",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Static Arm Curls"],
+      "displayName": "Static Arm Curls"
     },
     {
       "id": "static-curl",
       "name": "Static curl",
       "canonicalName": "Static curl",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Static-Arm Curls"],
+      "displayName": "Static-Arm Curls"
     },
     {
       "id": "std-push",
       "name": "Std push",
       "canonicalName": "Std push",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Standard Push-Ups"],
+      "displayName": "Standard Push-Ups"
     },
     {
       "id": "step-back",
       "name": "Step back",
       "canonicalName": "Step back",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Step Back Lunge"],
+      "displayName": "Step Back Lunge"
     },
     {
       "id": "strip-press",
       "name": "Strip press",
       "canonicalName": "Strip press",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Strip Press"],
+      "displayName": "Strip Press"
     },
     {
       "id": "strip-set-curls",
       "name": "Strip set curls",
       "canonicalName": "Strip set curls",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["\u0007Strip-Set Curls"],
+      "displayName": "\u0007Strip-Set Curls"
     },
     {
       "id": "superman",
       "name": "Superman",
       "canonicalName": "Superman",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["\u0007Superman"],
+      "displayName": "\u0007Superman"
     },
     {
       "id": "swimmer-press",
       "name": "Swimmer press",
       "canonicalName": "Swimmer press",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Deep Swimmer’s Presses"],
+      "displayName": "Deep Swimmer’s Presses"
     },
     {
       "id": "swimmer-push-ball",
       "name": "Swimmer push (ball)",
       "canonicalName": "Swimmer push (ball)",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Swimmer’s Push-Up"],
+      "displayName": "Swimmer’s Push-Up"
     },
     {
       "id": "switch-grip",
       "name": "Switch grip",
       "canonicalName": "Switch grip",
       "type": "bodyweight",
-      "aliases": ["Swith grip"]
+      "aliases": ["Switch Grip Pull-Ups", "Swith grip"],
+      "displayName": "Switch Grip Pull-Ups"
     },
     {
       "id": "switch-grip-pull",
       "name": "Switch grip pull",
       "canonicalName": "Switch grip pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Switch Grip Pull-Up"],
+      "displayName": "Switch Grip Pull-Up"
     },
     {
       "id": "throw-bomb",
       "name": "Throw bomb",
       "canonicalName": "Throw bomb",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Throw the Bomb"],
+      "displayName": "Throw the Bomb"
     },
     {
       "id": "toe-roll",
       "name": "Toe roll",
       "canonicalName": "Toe roll",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Toe-Roll Iso Lunge"],
+      "displayName": "Toe-Roll Iso Lunge"
     },
     {
       "id": "towel-pull",
       "name": "Towel pull",
       "canonicalName": "Towel pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Towel Pull-Ups"],
+      "displayName": "Towel Pull-Ups"
     },
     {
       "id": "triceps-pull",
       "name": "Triceps pull",
       "canonicalName": "Triceps pull",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Overhead Tricep Pull"],
+      "displayName": "Overhead Tricep Pull"
     },
     {
       "id": "tris",
       "name": "Tris",
       "canonicalName": "Tris",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Two-Arm Triceps Kickback"],
+      "displayName": "Two-Arm Triceps Kickback"
     },
     {
       "id": "tris-extension",
       "name": "Tris extension",
       "canonicalName": "Tris extension",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Tricep Extension on Stability Ball"],
+      "displayName": "Tricep Extension on Stability Ball"
     },
     {
       "id": "twentyones",
       "name": "Twentyones",
       "canonicalName": "Twentyones",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Twenty-Ones"],
+      "displayName": "Twenty-Ones"
     },
     {
       "id": "upright-rows",
       "name": "Upright rows",
       "canonicalName": "Upright rows",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Upright Rows"],
+      "displayName": "Upright Rows"
     },
     {
       "id": "valter-pulls",
       "name": "Valter pulls",
       "canonicalName": "Valter pulls",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Vaulter Pull-Up"],
+      "displayName": "Vaulter Pull-Up"
     },
     {
       "id": "wall-squats",
       "name": "Wall squats",
       "canonicalName": "Wall squats",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Wall Squats"],
+      "displayName": "Wall Squats"
     },
     {
       "id": "wide-fly",
       "name": "Wide fly",
       "canonicalName": "Wide fly",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Wide Fly Push-Ups"],
+      "displayName": "Wide Fly Push-Ups"
     },
     {
       "id": "wide-pull",
       "name": "Wide pull",
       "canonicalName": "Wide pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Wide Front Pull-Ups"],
+      "displayName": "Wide Front Pull-Ups"
     },
     {
       "id": "y-press",
       "name": "Y press",
       "canonicalName": "Y press",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Y-Presses"],
+      "displayName": "Y-Presses"
     },
     {
       "id": "yt-fly",
       "name": "YT fly",
       "canonicalName": "YT fly",
       "type": "weighted",
-      "aliases": []
+      "aliases": ["Y-T Fly"],
+      "displayName": "Y-T Fly"
     },
     {
       "id": "zip-kip-chin",
       "name": "Zip kip chin",
       "canonicalName": "Zip kip chin",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["Zip Kip Chin-Up"],
+      "displayName": "Zip Kip Chin-Up"
     },
     {
       "id": "zip-kip-pull",
       "name": "Zip kip pull",
       "canonicalName": "Zip kip pull",
       "type": "bodyweight",
-      "aliases": []
+      "aliases": ["\u0007Zip Kip Pull-Up"],
+      "displayName": "\u0007Zip Kip Pull-Up"
     }
   ],
   "templates": [
@@ -1147,7 +1303,9 @@
         "calf-raises",
         "ds",
         "location",
-        "form"
+        "form",
+        "single-leg-squat",
+        "3-ways"
       ]
     },
     {
@@ -1196,6 +1354,7 @@
         "admins-chin-ups",
         "ball-preacher",
         "stab-ball-lo",
+        "renegade-roman",
         "zip-kip-pull",
         "high-reps-curls",
         "staight-arm-pullover",

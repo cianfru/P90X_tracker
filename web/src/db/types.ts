@@ -61,11 +61,16 @@ export const MODIFIER_META: Record<Modifier, ModifierMeta> = {
 export interface Exercise {
   /** Stable slug of canonicalName, e.g. "std-push". */
   id: string
-  /** Canonical display name. */
+  /** Canonical name — the owner's spreadsheet shorthand; the STABLE key. */
   name: string
   canonicalName: string
+  /**
+   * Official P90X/P90X2 worksheet name, shown in the UI when present. The
+   * shorthand `name` stays the key so 7 years of history keep matching.
+   */
+  displayName?: string
   type: ExerciseType
-  /** Alternate spellings/typos that map onto this exercise (never fragment data). */
+  /** Alternate spellings/typos + official name that map onto this exercise. */
   aliases: string[]
 }
 

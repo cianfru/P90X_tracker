@@ -28,7 +28,8 @@ ALIASES = {
     "Balanced curls": "Balance curls",
     "Laying down tris": "Lay down tris",
     "Lawn": "Lawn.",
-    "Renegade roman": "Renegade row",
+    # NB: 'Renegade roman' (Renegade Roman Curl) and 'Renegade row' (Med Ball
+    # Renegade Row) are DISTINCT moves on the official V-Sculpt sheet — not merged.
 }
 def canon(name): return ALIASES.get(name, name)
 
