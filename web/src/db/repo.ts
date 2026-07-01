@@ -7,7 +7,14 @@ import { getDeviceId, todayISO, uid } from '../lib/id'
  * and append-only — logging inserts an immutable set; "removing" a set flips its
  * `deleted` flag (never erases the fact). Reads used reactively by the UI go
  * through useLiveQuery against `db` directly.
+ *
+ * Every write also enqueues the touched row into the sync outbox so it can be
+ * pushed to the backend when online (see sync/syncClient).
  */
+
+async function enqueue(table: 'sessions' | 'sets', rowId: string): Promise<void> {
+  await db.outbox.put({ key: `${table}:${rowId}`, table, rowId })
+}
 
 /** Non-deleted sets for one exercise within a session, in log order. */
 export async function sessionExerciseSets(
@@ -34,6 +41,7 @@ export async function startOrResumeSession(workoutId: string): Promise<string> {
     deviceId: getDeviceId(),
     createdAt: Date.now(),
   })
+  await enqueue('sessions', id)
   return id
 }
 
@@ -60,11 +68,13 @@ export async function logSet(input: {
     deleted: false,
   }
   await db.sets.add(set)
+  await enqueue('sets', set.id)
 }
 
 /** Soft-delete a set (append-only: flip the flag, keep the row for sync). */
 export async function softDeleteSet(id: string): Promise<void> {
   await db.sets.update(id, { deleted: true })
+  await enqueue('sets', id)
 }
 
 /**

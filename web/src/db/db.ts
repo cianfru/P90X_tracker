@@ -1,6 +1,18 @@
 import Dexie, { type Table } from 'dexie'
 import type { Exercise, Session, WorkoutSet, WorkoutTemplate } from './types'
 
+/** A row pending push to the backend (deduped by `key` = "table:rowId"). */
+export interface OutboxEntry {
+  key: string
+  table: 'sessions' | 'sets'
+  rowId: string
+}
+/** Small key/value store for sync state (cursor, timestamps). */
+export interface MetaEntry {
+  key: string
+  value: unknown
+}
+
 /*
  * On-device database (IndexedDB via Dexie). All reads/writes hit this first;
  * the UI never blocks on the network. See /CLAUDE.md → Golden rules.
@@ -17,6 +29,8 @@ export class P90XDatabase extends Dexie {
   templates!: Table<WorkoutTemplate, string>
   sessions!: Table<Session, string>
   sets!: Table<WorkoutSet, string>
+  outbox!: Table<OutboxEntry, string>
+  meta!: Table<MetaEntry, string>
 
   constructor() {
     super('p90x')
@@ -25,6 +39,11 @@ export class P90XDatabase extends Dexie {
       templates: 'id, name',
       sessions: 'id, date, workoutId, [workoutId+date], createdAt',
       sets: 'id, sessionId, exerciseId, [sessionId+exerciseId], loggedAt',
+    })
+    // v2 adds the sync outbox (rows pending push) + a meta key/value store.
+    this.version(2).stores({
+      outbox: 'key, table',
+      meta: 'key',
     })
   }
 }

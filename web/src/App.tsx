@@ -1,7 +1,15 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Dumbbell, Loader2, TrendingUp, WifiOff, Wifi } from 'lucide-react'
+import {
+  Dumbbell,
+  Loader2,
+  RefreshCw,
+  TrendingUp,
+  WifiOff,
+  Wifi,
+} from 'lucide-react'
 import { useOnlineStatus } from './lib/useOnlineStatus'
 import { ensureSeeded, needsHistorySeed, seedHistory } from './db'
+import { useSync } from './sync/useSync'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
 
@@ -24,6 +32,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [importPct, setImportPct] = useState<number | null>(null)
   const online = useOnlineStatus()
+  const syncState = useSync()
 
   useEffect(() => {
     void (async () => {
@@ -58,14 +67,34 @@ export default function App() {
             Local-first · works fully offline
           </p>
         </div>
-        {importPct !== null ? (
-          <span className="flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 font-mono text-xs text-sky-300">
-            <Loader2 size={13} className="animate-spin" />
-            importing {importPct}%
-          </span>
-        ) : (
-          <ConnPill online={online} />
-        )}
+        <div className="flex items-center gap-2">
+          {syncState.enabled &&
+            importPct === null &&
+            (syncState.syncing || syncState.pending > 0) && (
+              <span
+                className="flex items-center gap-1 font-mono text-xs text-zinc-500"
+                title={
+                  syncState.pending > 0
+                    ? `${syncState.pending} change(s) pending sync`
+                    : 'syncing'
+                }
+              >
+                <RefreshCw
+                  size={12}
+                  className={syncState.syncing ? 'animate-spin' : ''}
+                />
+                {syncState.pending > 0 ? syncState.pending : ''}
+              </span>
+            )}
+          {importPct !== null ? (
+            <span className="flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 font-mono text-xs text-sky-300">
+              <Loader2 size={13} className="animate-spin" />
+              importing {importPct}%
+            </span>
+          ) : (
+            <ConnPill online={online} />
+          )}
+        </div>
       </header>
 
       <main className="flex-1 px-4 pb-24">
