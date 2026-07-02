@@ -143,18 +143,19 @@ async function createSpreadsheet(): Promise<string> {
   return j.spreadsheetId
 }
 
-/** The spreadsheet id, creating the workbook on first use. Returns {id, fresh}. */
-export async function ensureSpreadsheet(): Promise<{ id: string; fresh: boolean }> {
-  const cached = localStorage.getItem(sheetKey())
-  if (cached) return { id: cached, fresh: false }
-  let id = await findSpreadsheet()
-  let fresh = false
+/**
+ * The spreadsheet id (found or created), plus whether it currently holds NO
+ * data rows. `empty` drives the first-run choice: a sheet that exists but was
+ * never populated (e.g. an interrupted first sync) still needs the upload.
+ */
+export async function ensureSpreadsheet(): Promise<{ id: string; empty: boolean }> {
+  let id = localStorage.getItem(sheetKey())
   if (!id) {
-    id = await createSpreadsheet()
-    fresh = true
+    id = (await findSpreadsheet()) ?? (await createSpreadsheet())
+    localStorage.setItem(sheetKey(), id)
   }
-  localStorage.setItem(sheetKey(), id)
-  return { id, fresh }
+  const dataRows = (await readRows(id, SESSIONS, 2)).filter((r) => r[0])
+  return { id, empty: dataRows.length === 0 }
 }
 
 async function appendRows(
@@ -197,11 +198,20 @@ async function pushOutbox(id: string): Promise<void> {
   await db.outbox.bulkDelete(entries.map((e) => e.key))
 }
 
-/** Append EVERY local row — the one-time migration into a fresh sheet. */
+async function clearData(id: string, tab: string): Promise<void> {
+  await api(`${SHEETS_API}/${id}/values/${tab}!A2:Z:clear`, { method: 'POST' })
+}
+
+/**
+ * Replace the sheet with EVERY local row — the migration / full backup. Clears
+ * existing data rows first so running it again can't create duplicates.
+ */
 export async function pushAll(
   id: string,
   onProgress?: (done: number, total: number) => void,
 ): Promise<void> {
+  await clearData(id, SESSIONS)
+  await clearData(id, SETS)
   const sessions = await db.sessions.toArray()
   const sets = await db.sets.toArray()
   await appendRows(id, SESSIONS, sessions.map(sessionToRow))

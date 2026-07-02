@@ -56,10 +56,11 @@ export function Account({
       const acct = await signIn()
       setAccount(acct)
       onChange()
-      const { id, fresh } = await ensureSpreadsheet()
-      if (fresh) {
-        // Brand-new sheet: let the user choose to upload existing data or start
-        // clean (e.g. a second person who shouldn't inherit the seeded history).
+      const { id, empty } = await ensureSpreadsheet()
+      if (empty) {
+        // Sheet has no data yet (new, or an interrupted first sync): let the
+        // user upload existing data or start clean (a second person shouldn't
+        // inherit the seeded history).
         const count = await db.sessions.count()
         setChoose({ id, count })
       } else {
@@ -130,6 +131,21 @@ export function Account({
     const r = await syncGoogle()
     if (!r.ok && r.reason) setError(r.reason)
     setBusy(null)
+  }
+
+  async function handleForceBackup() {
+    setBusy('migrate')
+    setError(null)
+    try {
+      const { id } = await ensureSpreadsheet()
+      await pushAll(id, (done, total) => setPct(Math.round((done / total) * 100)))
+      onChange()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(null)
+      setPct(null)
+    }
   }
 
   return (
@@ -263,6 +279,19 @@ export function Account({
               <LogOut size={16} /> Sign out
             </button>
           </div>
+          <button
+            onClick={handleForceBackup}
+            disabled={busy === 'migrate'}
+            className="press mt-2 w-full rounded-xl bg-[#34f5a0]/15 py-2.5 text-sm font-semibold text-[#34f5a0] disabled:opacity-50"
+          >
+            {busy === 'migrate'
+              ? `Backing up… ${pct ?? 0}%`
+              : 'Back up all my data now'}
+          </button>
+          <p className="mt-1.5 text-[12px] text-ink-3">
+            Uploads everything on this device to your Sheet. Use once if your
+            history didn't upload the first time.
+          </p>
         </div>
       )}
 
