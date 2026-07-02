@@ -19,7 +19,7 @@ npm run format:check  # prettier --check .
 ## Structure
 
 ```
-public/            PWA icons (pwa-192/512, maskable, apple-touch) + icon.svg
+public/            PWA icons (pwa-192/512, maskable, apple-touch, favicon)
 src/
   App.tsx          app shell: header, connectivity pill, Train/Monitor nav
   main.tsx         React entry
@@ -38,5 +38,6 @@ src/
   opens instantly and works with no signal.
 - `devOptions.enabled` keeps the service worker on in `npm run dev` so install +
   offline can be verified without a production build.
-- Icons are generated from `public/icon.svg` (rasterized with `sharp` as a
-  one-off; not a committed dependency). Regenerate if the mark changes.
+- Icons are generated from `assets/app-icon-source.png` (cropped full-bleed and
+  resized with `sharp` as a one-off; not a committed dependency). Regenerate the
+  `pwa-*`, `maskable`, `apple-touch-icon` and `favicon` PNGs if the mark changes.
