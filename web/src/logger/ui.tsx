@@ -11,7 +11,7 @@ export function Stepper({
   step = 1,
   min = 0,
   accent = 'emerald',
-  valueClass,
+  valueColor,
 }: {
   label: string
   value: number
@@ -19,11 +19,10 @@ export function Stepper({
   step?: number
   min?: number
   accent?: 'emerald' | 'sky'
-  /** Overrides the value colour (used for live effort colour coding). */
-  valueClass?: string
+  /** Explicit value colour (hex) — used for live effort colour coding. */
+  valueColor?: string
 }) {
-  const tint =
-    valueClass ?? (accent === 'sky' ? 'text-[#3bc6ff]' : 'text-[#37e29a]')
+  const tint = valueColor ?? (accent === 'sky' ? '#33cbff' : '#34f5a0')
   const bump = (dir: number) => onChange(Math.max(min, value + dir * step))
   return (
     <div className="flex-1">
@@ -37,7 +36,10 @@ export function Stepper({
         >
           <Minus size={18} strokeWidth={2.5} />
         </button>
-        <div className={`nums flex-1 text-center text-3xl font-bold ${tint}`}>
+        <div
+          className="nums flex-1 text-center text-3xl font-bold"
+          style={{ color: tint }}
+        >
           {value}
         </div>
         <button

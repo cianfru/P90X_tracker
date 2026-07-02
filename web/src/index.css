@@ -18,11 +18,9 @@
   --color-ink-2: #d7dde8;
   --color-ink-3: #aab3c2;
 
-  /* Accents */
-  --color-accent: #37e29a; /* primary action — energetic mint-green */
-  --color-accent-ink: #04140d;
-  --color-power: #ff6a3d; /* P90X energy orange */
-  --color-flow: #3bc6ff; /* P90X2 electric blue */
+  /* Accents — energetic fluo. P90X green is the app's default primary. */
+  --color-accent: #34f5a0; /* fluo green (P90X) */
+  --color-accent-ink: #06140d;
 
   --font-sans:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',

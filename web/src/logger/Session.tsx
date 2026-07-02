@@ -4,6 +4,7 @@ import { ChevronLeft, Flag, Trash2 } from 'lucide-react'
 import { db } from '../db'
 import { deleteSession, templateExercises } from '../db/repo'
 import { capturePosition } from './geolocate'
+import { programAccent } from './programColor'
 import { fmtDate, getDeviceId } from '../lib/id'
 import { ExerciseCard } from './ExerciseCard'
 import { Recap } from './Recap'
@@ -60,6 +61,7 @@ export function Session({
   const totalRoundsOf = (id: string) => walk.filter((x) => x === id).length
   const curRound = curId ? roundOf(pos) : 1
   const curTotal = curId ? totalRoundsOf(curId) : 1
+  const accent = programAccent(template?.program)
 
   // Capture GPS once, when a workout is freshly started on this device.
   const triedGeo = useRef(false)
@@ -133,7 +135,10 @@ export function Session({
             <div className="flex items-center gap-2 leading-tight font-bold capitalize">
               <span className="truncate">{template?.name ?? '…'}</span>
               {curTotal > 1 && (
-                <span className="nums shrink-0 rounded-full bg-sky-400/20 px-2 py-0.5 text-xs font-bold text-sky-300">
+                <span
+                  className="nums shrink-0 rounded-full px-2 py-0.5 text-xs font-bold"
+                  style={{ background: `${accent}26`, color: accent }}
+                >
                   {curRound}/{curTotal}
                 </span>
               )}
@@ -146,7 +151,8 @@ export function Session({
             onClick={() => setShowRecap(true)}
             aria-label="finish workout"
             title="finish — recap vs previous sessions"
-            className="press flex h-9 w-9 items-center justify-center rounded-full bg-[#37e29a]/15 text-[#37e29a]"
+            className="press flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: `${accent}26`, color: accent }}
           >
             <Flag size={17} />
           </button>
@@ -175,6 +181,7 @@ export function Session({
             key={ex.id}
             exercise={ex}
             sessionId={sessionId}
+            accent={accent}
             isOpen={open === ex.id}
             onToggle={() => setOpen(open === ex.id ? null : ex.id)}
             onLogged={handleLogged}

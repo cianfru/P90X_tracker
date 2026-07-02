@@ -5,6 +5,7 @@ import { db } from '../db'
 import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
 import { getBodyweight, setBodyweight } from './effort'
+import { programAccent } from './programColor'
 import { fmtDate, todayISO } from '../lib/id'
 import { Label } from './ui'
 
@@ -15,18 +16,19 @@ import { Label } from './ui'
  * with no workouts yet (Body Beast) show a "coming soon" slot. All reads live.
  */
 
-const PROGRAMS: { id: Program; blurb: string; accent: string }[] = [
-  { id: 'P90X', blurb: 'Classic resistance block', accent: '#ff6a3d' },
-  { id: 'P90X2', blurb: 'X2 stability & power', accent: '#3bc6ff' },
-  { id: 'P90X3', blurb: '30-minute resistance', accent: '#a78bfa' },
-  { id: 'Body Beast', blurb: 'Coming soon', accent: '#fbbf24' },
+const PROGRAMS: { id: Program; blurb: string }[] = [
+  { id: 'P90X', blurb: 'Classic resistance block' },
+  { id: 'P90X2', blurb: 'X2 stability & power' },
+  { id: 'P90X3', blurb: '30-minute resistance' },
+  { id: 'Body Beast', blurb: 'Coming soon' },
 ]
 
 export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
   const templates = useLiveQuery(() => db.templates.orderBy('name').toArray())
-  const [program, setProgram] = useState<{ id: Program; accent: string } | null>(
-    null,
-  )
+  const [programId, setProgramId] = useState<Program | null>(null)
+  const program = programId
+    ? { id: programId, accent: programAccent(programId) }
+    : null
   const [bw, setBw] = useState(getBodyweight())
   const today = todayISO()
 
@@ -80,7 +82,7 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
     return (
       <div className="pt-3">
         <button
-          onClick={() => setProgram(null)}
+          onClick={() => setProgramId(null)}
           className="press mb-5 flex items-center gap-1 text-sm font-semibold text-ink-2"
         >
           <ChevronLeft size={18} /> Programs
@@ -166,18 +168,20 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
 
       <Label>Choose a program</Label>
       <div className="mt-2.5 space-y-2.5">
-        {PROGRAMS.map((p) => (
+        {PROGRAMS.map((p) => {
+          const accent = programAccent(p.id)
+          return (
           <button
             key={p.id}
-            onClick={() => setProgram({ id: p.id, accent: p.accent })}
+            onClick={() => setProgramId(p.id)}
             className="press card flex w-full items-center gap-3.5 px-4 py-4 text-left"
           >
             <span
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
               style={{
-                background: `linear-gradient(160deg, ${p.accent}33, ${p.accent}14)`,
-                color: p.accent,
-                boxShadow: `inset 0 0 0 1px ${p.accent}33`,
+                background: `linear-gradient(160deg, ${accent}33, ${accent}14)`,
+                color: accent,
+                boxShadow: `inset 0 0 0 1px ${accent}33`,
               }}
             >
               <Dumbbell size={22} strokeWidth={2.4} />
@@ -195,7 +199,8 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
               <ChevronRight size={18} className="text-ink-3" />
             </span>
           </button>
-        ))}
+          )
+        })}
       </div>
 
       {(recent?.length ?? 0) > 0 && (

@@ -19,17 +19,12 @@ import { Chip, Stepper } from './ui'
  *  - "Log & next": one tap logs the set and advances to the next exercise.
  */
 
-const TONE_TEXT: Record<EffortTone, string> = {
-  ok: 'text-[#37e29a]',
-  push: 'text-amber-400',
-  record: 'text-rose-400',
-  none: 'text-[#37e29a]',
-}
-const TONE_BTN: Record<EffortTone, string> = {
-  ok: 'bg-[#37e29a] shadow-[0_8px_24px_-8px_#37e29a99]',
-  push: 'bg-amber-400 shadow-[0_8px_24px_-8px_#fbbf2499]',
-  record: 'bg-rose-400 shadow-[0_8px_24px_-8px_#fb718599]',
-  none: 'bg-[#37e29a] shadow-[0_8px_24px_-8px_#37e29a99]',
+/** Live effort colour: baseline uses the program accent; amber = pushing above
+ *  your recent average; rose = at/over your all-time max. */
+function toneHex(tone: EffortTone, accent: string): string {
+  if (tone === 'push') return '#fbbf24'
+  if (tone === 'record') return '#fb7185'
+  return accent
 }
 
 function histLabel(h: HistEntry): string {
@@ -40,12 +35,14 @@ function histLabel(h: HistEntry): string {
 export function ExerciseCard({
   exercise,
   sessionId,
+  accent,
   isOpen,
   onToggle,
   onLogged,
 }: {
   exercise: Exercise
   sessionId: string
+  accent: string
   isOpen: boolean
   onToggle: () => void
   onLogged?: (exerciseId: string) => void
@@ -93,6 +90,7 @@ export function ExerciseCard({
     exercise.type,
   )
   const tone: EffortTone = stats ? effortTone(currentEffort, stats) : 'none'
+  const toneColor = toneHex(tone, accent)
 
   const changeReps = (v: number) => {
     touched.current = true
@@ -136,7 +134,10 @@ export function ExerciseCard({
         <div className="flex items-center gap-2.5 text-left">
           <span className="font-semibold">{label}</span>
           {sets.length > 0 && (
-            <span className="nums rounded-full bg-[#37e29a]/20 px-2 py-0.5 text-xs font-bold text-[#37e29a]">
+            <span
+              className="nums rounded-full px-2 py-0.5 text-xs font-bold"
+              style={{ background: `${accent}30`, color: accent }}
+            >
               {sets.length}×
             </span>
           )}
@@ -173,7 +174,10 @@ export function ExerciseCard({
                 </span>
               )}
               {(weighted ? stats.targetWeightKg : stats.targetReps) != null && (
-                <span className="rounded-lg bg-[#37e29a]/12 px-2.5 py-1 text-[#37e29a]">
+                <span
+                  className="rounded-lg px-2.5 py-1"
+                  style={{ background: `${accent}1f`, color: accent }}
+                >
                   avg {weighted ? stats.targetWeightKg : stats.targetReps}
                 </span>
               )}
@@ -207,7 +211,7 @@ export function ExerciseCard({
               label={`reps · R${round}`}
               value={reps}
               onChange={changeReps}
-              valueClass={TONE_TEXT[tone]}
+              valueColor={toneColor}
             />
             {weighted && (
               <Stepper
@@ -264,7 +268,11 @@ export function ExerciseCard({
 
           <button
             onClick={log}
-            className={`press mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-bold text-[#04140d] ${TONE_BTN[tone]}`}
+            className="press mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-bold text-[#06140d]"
+            style={{
+              background: toneColor,
+              boxShadow: `0 8px 24px -8px ${toneColor}99`,
+            }}
           >
             Log &amp; next <ArrowRight size={18} strokeWidth={2.6} />
           </button>
