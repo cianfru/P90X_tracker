@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   Bar,
@@ -12,16 +12,25 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Activity, Trophy } from 'lucide-react'
+import { Activity, MapPin, Pill, Trophy } from 'lucide-react'
 import { db } from '../db'
+import type { Supplement } from '../db'
+import { SUPPLEMENTS } from '../db'
 import { fmtDate } from '../lib/id'
 import { computeAnalytics, progressionFor } from './analytics'
+import { resolveLocation } from './geo'
+
+// Leaflet is heavy; only pull it in when the Monitor (already lazy) renders.
+const TravelMap = lazy(() =>
+  import('./TravelMap').then((m) => ({ default: m.TravelMap })),
+)
 
 const C = {
   emerald: '#34d399',
   sky: '#38bdf8',
   amber: '#fbbf24',
   rose: '#fb7185',
+  violet: '#a78bfa',
   grid: 'rgba(255,255,255,.06)',
   mut: '#8a97ab',
 }
@@ -58,6 +67,52 @@ export function Monitor() {
         (x.displayName ?? x.name).localeCompare(y.displayName ?? y.name),
       )
   }, [ready, sets, exercises])
+
+  // Per-day metadata analytics (location / form / supplements).
+  const meta = useMemo(() => {
+    if (!sessions) return null
+    const live = sessions.filter((s) => !s.deleted)
+    // Average form per month.
+    const formByMonth = new Map<string, { sum: number; n: number }>()
+    for (const s of live) {
+      if (s.form == null) continue
+      const m = s.date.slice(0, 7)
+      const cur = formByMonth.get(m) ?? { sum: 0, n: 0 }
+      cur.sum += s.form
+      cur.n += 1
+      formByMonth.set(m, cur)
+    }
+    const formTrend = [...formByMonth.entries()]
+      .map(([label, v]) => ({ label, value: +(v.sum / v.n).toFixed(2) }))
+      .sort((a, b) => (a.label < b.label ? -1 : 1))
+    // Supplement day counts, and located / unlocated place tally.
+    const suppCounts = Object.fromEntries(
+      SUPPLEMENTS.map((s) => [s, 0]),
+    ) as Record<Supplement, number>
+    let suppDays = 0
+    const placeKeys = new Set<string>()
+    let located = 0
+    for (const s of live) {
+      if (s.supplements?.length) {
+        suppDays++
+        for (const x of s.supplements) suppCounts[x]++
+      }
+      if (s.location) {
+        const r = resolveLocation(s.location)
+        if (r) {
+          placeKeys.add(r.key)
+          located++
+        }
+      }
+    }
+    return {
+      formTrend,
+      suppCounts,
+      suppDays,
+      places: placeKeys.size,
+      located,
+    }
+  }, [sessions])
 
   const [exId, setExId] = useState<string | null>(null)
   const selected =
@@ -120,6 +175,25 @@ export function Monitor() {
           tone="rose"
         />
       </div>
+
+      {/* Training map — where every session happened */}
+      {meta && meta.located > 0 && (
+        <Card
+          title="Training around the world"
+          subtitle={`${meta.located.toLocaleString()} located sessions across ${meta.places} places`}
+          right={<MapPin size={16} className="text-sky-400" />}
+        >
+          <Suspense
+            fallback={
+              <div className="py-12 text-center font-mono text-xs text-zinc-500">
+                loading map…
+              </div>
+            }
+          >
+            <TravelMap sessions={sessions ?? []} templates={templates ?? []} />
+          </Suspense>
+        </Card>
+      )}
 
       {/* Per-exercise progression */}
       <Card
@@ -245,6 +319,78 @@ export function Monitor() {
           </BarChart>
         </ChartBox>
       </Card>
+
+      {/* Form / readiness over time */}
+      {meta && meta.formTrend.length > 1 && (
+        <Card
+          title="How I felt — self-assessed form"
+          subtitle="average readiness (1–10) per month"
+        >
+          <ChartBox height={170}>
+            <LineChart
+              data={meta.formTrend}
+              margin={{ top: 5, right: 8, left: -24, bottom: 0 }}
+            >
+              <CartesianGrid stroke={C.grid} vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: C.mut, fontSize: 10 }}
+                tickFormatter={(m: string) =>
+                  m.endsWith('-01') ? m.slice(0, 4) : ''
+                }
+                interval={0}
+              />
+              <YAxis
+                tick={{ fill: C.mut, fontSize: 10 }}
+                domain={[1, 10]}
+                ticks={[2, 4, 6, 8, 10]}
+              />
+              <Tooltip {...tip} formatter={(v) => [v, 'form']} />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={C.violet}
+                strokeWidth={2}
+                dot={false}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ChartBox>
+        </Card>
+      )}
+
+      {/* Supplements */}
+      {meta && meta.suppDays > 0 && (
+        <Card
+          title="Supplements"
+          subtitle={`${meta.suppDays.toLocaleString()} days logged`}
+          right={<Pill size={16} className="text-emerald-400" />}
+        >
+          <div className="space-y-2">
+            {SUPPLEMENTS.map((s) => {
+              const n = meta.suppCounts[s]
+              const pct = Math.round((n / meta.suppDays) * 100)
+              return (
+                <div
+                  key={s}
+                  className="grid grid-cols-[5rem_1fr_4rem] items-center gap-2.5 text-sm"
+                >
+                  <span className="text-zinc-300 capitalize">{s}</span>
+                  <span className="h-2 overflow-hidden rounded bg-white/5">
+                    <span
+                      className="block h-full rounded bg-emerald-400"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </span>
+                  <span className="text-right font-mono text-xs text-zinc-400">
+                    {n} · {pct}%
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Struggle per year */}
       <Card
