@@ -8,6 +8,19 @@ export type ExerciseType = 'bodyweight' | 'weighted'
 /** Body region an exercise trains — drives the Mixer's upper/lower/total focus. */
 export type ExerciseRegion = 'upper' | 'lower' | 'core' | 'total'
 
+/** Finer muscle group — lets the Mixer swap like-for-like (curl→curl, squat→lunge). */
+export type Muscle =
+  | 'chest'
+  | 'back'
+  | 'shoulders'
+  | 'biceps'
+  | 'triceps'
+  | 'quads'
+  | 'hamsglutes'
+  | 'calves'
+  | 'core'
+  | 'total'
+
 /** Typed modifier vocabulary — replaces the reverse-engineered spreadsheet notation. */
 export const MODIFIERS = [
   'no_kip',
@@ -83,6 +96,8 @@ export interface Exercise {
   type: ExerciseType
   /** Body region trained (drives the Mixer's upper/lower/total swaps). */
   region?: ExerciseRegion
+  /** Finer muscle group (Mixer swaps within the same one). */
+  muscle?: Muscle
   /** Alternate spellings/typos + official name that map onto this exercise. */
   aliases: string[]
 }

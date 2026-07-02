@@ -37,6 +37,18 @@ const REGION_COLOR: Record<string, string> = {
   core: '#b26bff',
   total: '#ff9636',
 }
+const MUSCLE_LABEL: Record<string, string> = {
+  chest: 'Chest',
+  back: 'Back',
+  shoulders: 'Shoulders',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  quads: 'Quads',
+  hamsglutes: 'Glutes',
+  calves: 'Calves',
+  core: 'Core',
+  total: 'Total',
+}
 
 export function Mixer({
   onStart,
@@ -186,8 +198,13 @@ export function Mixer({
                     style={{ background: REGION_COLOR[m.region] }}
                     title={m.region}
                   />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {m.name}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {m.name}
+                    </span>
+                    <span className="text-[11px] text-ink-3">
+                      {MUSCLE_LABEL[m.muscle] ?? m.muscle}
+                    </span>
                   </span>
                   <span className="nums shrink-0 text-sm font-bold text-ink">
                     {m.target}

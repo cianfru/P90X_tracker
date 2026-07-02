@@ -78,6 +78,9 @@ function targetFor(stat: ExStat, intensity: Intensity): number {
 function regionOf(ex: Exercise): ExerciseRegion {
   return ex.region ?? 'upper'
 }
+function muscleOf(ex: Exercise): string {
+  return ex.muscle ?? regionOf(ex)
+}
 
 /** Dominant body region of a template, for matching it to a focus. */
 function templateRegions(t: WorkoutTemplate, exById: Map<string, Exercise>) {
@@ -118,7 +121,14 @@ const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 export interface MixResult {
   template: WorkoutTemplate
   baseName: string
-  moves: { id: string; name: string; region: ExerciseRegion; target: number; unit: string }[]
+  moves: {
+    id: string
+    name: string
+    region: ExerciseRegion
+    muscle: string
+    target: number
+    unit: string
+  }[]
 }
 
 /**
@@ -134,26 +144,30 @@ export function generateMix(
   stats: Map<string, ExStat>,
   now: number,
 ): MixResult {
-  // Candidate pool per (region, type), sorted by least-recently-done.
-  const poolKey = (r: ExerciseRegion, t: string) => `${r}:${t}`
-  const pools = new Map<string, Exercise[]>()
+  // Candidate pools keyed by muscle:type (primary) and region:type (fallback),
+  // each sorted least-recently-done so swaps favour fresh moves.
+  const musclePools = new Map<string, Exercise[]>()
+  const regionPools = new Map<string, Exercise[]>()
   for (const ex of logged) {
-    const k = poolKey(regionOf(ex), ex.type)
-    const arr = pools.get(k) ?? []
-    arr.push(ex)
-    pools.set(k, arr)
+    const mk = `${muscleOf(ex)}:${ex.type}`
+    const rk = `${regionOf(ex)}:${ex.type}`
+    ;(musclePools.get(mk) ?? musclePools.set(mk, []).get(mk)!).push(ex)
+    ;(regionPools.get(rk) ?? regionPools.set(rk, []).get(rk)!).push(ex)
   }
-  for (const arr of pools.values()) {
-    arr.sort((a, b) => {
-      const la = stats.get(a.id)?.last ?? ''
-      const lb = stats.get(b.id)?.last ?? ''
-      return la < lb ? -1 : la > lb ? 1 : 0 // oldest first
-    })
+  const byOldest = (a: Exercise, b: Exercise) => {
+    const la = stats.get(a.id)?.last ?? ''
+    const lb = stats.get(b.id)?.last ?? ''
+    return la < lb ? -1 : la > lb ? 1 : 0
   }
+  for (const arr of musclePools.values()) arr.sort(byOldest)
+  for (const arr of regionPools.values()) arr.sort(byOldest)
 
   const used = new Set<string>()
   const swap = new Map<string, string>() // original id -> chosen id
   const distinct = base.exerciseIds
+
+  const avail = (arr: Exercise[], origId: string) =>
+    arr.filter((e) => e.id !== origId && !used.has(e.id))
 
   for (const origId of distinct) {
     const orig = exById.get(origId)
@@ -161,10 +175,10 @@ export function generateMix(
       swap.set(origId, origId)
       continue
     }
-    const pool = (pools.get(poolKey(regionOf(orig), orig.type)) ?? []).filter(
-      (e) => e.id !== origId && !used.has(e.id),
-    )
-    // Prefer the oldest third (variety) with a bit of randomness; else keep.
+    // Same muscle group first (curl→curl), then same region, else keep.
+    let pool = avail(musclePools.get(`${muscleOf(orig)}:${orig.type}`) ?? [], origId)
+    if (!pool.length)
+      pool = avail(regionPools.get(`${regionOf(orig)}:${orig.type}`) ?? [], origId)
     let choice: Exercise | undefined
     if (pool.length) {
       const head = pool.slice(0, Math.max(3, Math.ceil(pool.length / 3)))
@@ -192,6 +206,7 @@ export function generateMix(
       id,
       name: ex.displayName ?? ex.name,
       region: regionOf(ex),
+      muscle: muscleOf(ex),
       target,
       unit: ex.type === 'weighted' ? 'kg' : 'reps',
     })
