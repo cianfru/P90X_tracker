@@ -5,6 +5,9 @@
 
 export type ExerciseType = 'bodyweight' | 'weighted'
 
+/** Body region an exercise trains — drives the Mixer's upper/lower/total focus. */
+export type ExerciseRegion = 'upper' | 'lower' | 'core' | 'total'
+
 /** Typed modifier vocabulary — replaces the reverse-engineered spreadsheet notation. */
 export const MODIFIERS = [
   'no_kip',
@@ -78,12 +81,14 @@ export interface Exercise {
    */
   displayName?: string
   type: ExerciseType
+  /** Body region trained (drives the Mixer's upper/lower/total swaps). */
+  region?: ExerciseRegion
   /** Alternate spellings/typos + official name that map onto this exercise. */
   aliases: string[]
 }
 
-/** The training programs the workouts belong to. */
-export type Program = 'P90X' | 'P90X2' | 'P90X3' | 'Body Beast'
+/** The training programs the workouts belong to. `Mixer` = auto-generated. */
+export type Program = 'P90X' | 'P90X2' | 'P90X3' | 'Body Beast' | 'Mixer'
 
 export interface WorkoutTemplate {
   id: string
@@ -106,6 +111,13 @@ export interface WorkoutTemplate {
    * sequence and `rounds` is ignored. Cards still render once per exercise.
    */
   sequence?: string[]
+  /**
+   * The routine this remix is paced by — a Mixer keeps an existing routine's
+   * structure so its video still gives the right tempo. Shown as "like <base>".
+   */
+  basedOn?: string
+  /** Per-exercise pre-fill targets (reps / weight) for a generated Mixer. */
+  targets?: Record<string, { reps?: number; weightKg?: number }>
 }
 
 export interface Session {

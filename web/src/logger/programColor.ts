@@ -10,6 +10,7 @@ export const PROGRAM_ACCENT: Record<Program, string> = {
   P90X2: '#33cbff', // fluo blue
   P90X3: '#b26bff', // fluo violet
   'Body Beast': '#ff9636', // fluo orange
+  Mixer: '#ff5cc8', // fluo pink
 }
 
 /** Accent for a program (defaults to the P90X green when unknown). */
