@@ -14,6 +14,7 @@ export function fmtDate(iso: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
+    year: '2-digit',
   })
 }
 

@@ -118,13 +118,13 @@ export function Recap({
       <div className="card overflow-x-auto p-0">
         <table className="nums w-full text-xs">
           <thead>
-            <tr className="eyebrow border-b border-hair">
-              <th className="px-3 py-3 text-left font-semibold">Exercise</th>
+            <tr className="border-b border-hair text-ink-3">
+              <th className="eyebrow px-3 py-3 text-left">Exercise</th>
               {columns.map((c, i) => (
                 <th
                   key={c.id}
-                  className={`px-2.5 py-3 text-right font-semibold ${
-                    i === 0 ? 'text-[#37e29a]' : ''
+                  className={`px-2.5 py-3 text-right text-[11px] font-bold whitespace-nowrap ${
+                    i === 0 ? 'eyebrow !text-[#37e29a]' : ''
                   }`}
                 >
                   {i === 0 ? 'Today' : fmtDate(c.date)}
