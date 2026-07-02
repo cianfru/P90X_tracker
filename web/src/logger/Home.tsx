@@ -139,8 +139,11 @@ export function Home({
                 </span>
                 <span className="nums block text-[13px] text-ink-3">
                   {t.exerciseIds.length} moves
-                  {(t.rounds ?? 1) > 1 ? ` · ${t.rounds} rounds` : ''}
-                  {t.sequence ? ' · rounds + extra' : ''}
+                  {(t.rounds ?? 1) > 1
+                    ? ` · ${t.rounds} rounds`
+                    : t.sequence
+                      ? ' · mixed rounds'
+                      : ''}
                 </span>
               </span>
               <ChevronRight size={18} className="shrink-0 text-ink-3" />
