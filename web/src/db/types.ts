@@ -92,6 +92,13 @@ export interface WorkoutTemplate {
   program: Program
   /** Exercise ids in the order they're performed. */
   exerciseIds: string[]
+  /**
+   * How many times the exercise list is performed as full rounds (default 1).
+   * e.g. P90X2 Total Body is the same 12 moves done twice; the logger walks the
+   * list `rounds` times so each move gets round 1, 2, … Only set where every
+   * exercise repeats equally (uniform rounds); mixed workouts stay 1.
+   */
+  rounds?: number
 }
 
 export interface Session {

@@ -39,9 +39,13 @@ export function Session({
 
   const [open, setOpen] = useState<string | null>(null)
   const [showRecap, setShowRecap] = useState(false)
+  const [round, setRound] = useState(1)
+  const rounds = template?.rounds ?? 1
   useEffect(() => {
     if (open === null && exercises?.length && !showRecap) setOpen(exercises[0].id)
   }, [exercises, open, showRecap])
+  // Reset the round counter when switching sessions.
+  useEffect(() => setRound(1), [sessionId])
 
   // Capture GPS once, when a workout is freshly started on this device.
   const triedGeo = useRef(false)
@@ -72,6 +76,10 @@ export function Session({
     const next = exercises[i + 1]
     if (next) {
       setOpen(next.id)
+    } else if (round < rounds) {
+      // Same exercises again — start the next round from the top.
+      setRound((r) => r + 1)
+      setOpen(exercises[0].id)
     } else {
       setOpen(null)
       setShowRecap(true)
@@ -108,8 +116,13 @@ export function Session({
           <ChevronLeft size={22} />
         </button>
         <div className="flex-1">
-          <div className="leading-tight font-semibold capitalize">
+          <div className="flex items-center gap-2 leading-tight font-semibold capitalize">
             {template?.name ?? '…'}
+            {rounds > 1 && (
+              <span className="rounded bg-sky-500/20 px-1.5 py-0.5 font-mono text-xs font-medium tracking-wide text-sky-300">
+                round {round}/{rounds}
+              </span>
+            )}
           </div>
           <div className="font-mono text-xs text-zinc-500">
             {session ? fmtDate(session.date) : ''}
