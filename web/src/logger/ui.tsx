@@ -11,6 +11,7 @@ export function Stepper({
   step = 1,
   min = 0,
   accent = 'emerald',
+  valueClass,
 }: {
   label: string
   value: number
@@ -18,8 +19,11 @@ export function Stepper({
   step?: number
   min?: number
   accent?: 'emerald' | 'sky'
+  /** Overrides the value colour (used for live effort colour coding). */
+  valueClass?: string
 }) {
-  const ring = accent === 'sky' ? 'text-sky-400' : 'text-emerald-400'
+  const ring =
+    valueClass ?? (accent === 'sky' ? 'text-sky-400' : 'text-emerald-400')
   const bump = (dir: number) => onChange(Math.max(min, value + dir * step))
   return (
     <div className="flex-1">

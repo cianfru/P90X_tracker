@@ -50,6 +50,7 @@ interface WireSession {
   workout_id: string
   device_id: string
   created_at: number
+  deleted: boolean
 }
 interface WireSet {
   id: string
@@ -70,6 +71,7 @@ const sessionToWire = (s: Session): WireSession => ({
   workout_id: s.workoutId,
   device_id: s.deviceId,
   created_at: s.createdAt,
+  deleted: !!s.deleted,
 })
 const setToWire = (s: WorkoutSet): WireSet => ({
   id: s.id,
@@ -89,6 +91,7 @@ const wireToSession = (w: WireSession): Session => ({
   workoutId: w.workout_id,
   deviceId: w.device_id,
   createdAt: w.created_at,
+  deleted: !!w.deleted,
 })
 const wireToSet = (w: WireSet): WorkoutSet => ({
   id: w.id,

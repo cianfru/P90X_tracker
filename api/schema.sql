@@ -13,9 +13,12 @@ CREATE TABLE IF NOT EXISTS sessions (
   workout_id  TEXT        NOT NULL,
   device_id   TEXT        NOT NULL,
   created_at  BIGINT      NOT NULL,               -- client timestamp (ms)
+  deleted     BOOLEAN     NOT NULL DEFAULT FALSE,  -- soft-delete (wrong routine)
   seq         BIGINT      NOT NULL DEFAULT nextval('sync_seq')
 );
 CREATE INDEX IF NOT EXISTS sessions_seq_idx ON sessions (seq);
+-- Migration for databases created before sessions.deleted existed.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS sets (
   id          UUID PRIMARY KEY,

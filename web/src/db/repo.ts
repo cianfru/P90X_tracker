@@ -31,7 +31,8 @@ export async function sessionExerciseSets(
 /** Create today's session for a workout, or return the existing one. */
 export async function startOrResumeSession(workoutId: string): Promise<string> {
   const date = todayISO()
-  const existing = await db.sessions.where({ workoutId, date }).first()
+  const candidates = await db.sessions.where({ workoutId, date }).toArray()
+  const existing = candidates.find((s) => !s.deleted)
   if (existing) return existing.id
   const id = uid()
   await db.sessions.add({
@@ -75,6 +76,22 @@ export async function logSet(input: {
 export async function softDeleteSet(id: string): Promise<void> {
   await db.sets.update(id, { deleted: true })
   await enqueue('sets', id)
+}
+
+/**
+ * Soft-delete a whole session (started the wrong routine) and all its sets.
+ * Rows stay for sync (deleted flags propagate); the UI filters them out.
+ */
+export async function deleteSession(id: string): Promise<void> {
+  const sets = await db.sets.where('sessionId').equals(id).toArray()
+  await db.transaction('rw', db.sessions, db.sets, async () => {
+    await db.sessions.update(id, { deleted: true })
+    for (const s of sets) {
+      if (!s.deleted) await db.sets.update(s.id, { deleted: true })
+    }
+  })
+  await enqueue('sessions', id)
+  for (const s of sets) await enqueue('sets', s.id)
 }
 
 /**

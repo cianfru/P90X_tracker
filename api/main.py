@@ -60,6 +60,7 @@ class Session(BaseModel):
     workout_id: str
     device_id: str
     created_at: int
+    deleted: bool = False
 
 
 class Set(BaseModel):
@@ -93,16 +94,17 @@ async def push(body: PushBody):
             for s in body.sessions:
                 await conn.execute(
                     """
-                    INSERT INTO sessions (id, date, workout_id, device_id, created_at, seq)
-                    VALUES ($1, $2::date, $3, $4, $5, nextval('sync_seq'))
+                    INSERT INTO sessions (id, date, workout_id, device_id, created_at, deleted, seq)
+                    VALUES ($1, $2::date, $3, $4, $5, $6, nextval('sync_seq'))
                     ON CONFLICT (id) DO UPDATE SET
                       date = EXCLUDED.date,
                       workout_id = EXCLUDED.workout_id,
                       device_id = EXCLUDED.device_id,
                       created_at = EXCLUDED.created_at,
+                      deleted = EXCLUDED.deleted,
                       seq = nextval('sync_seq')
                     """,
-                    s.id, s.date, s.workout_id, s.device_id, s.created_at,
+                    s.id, s.date, s.workout_id, s.device_id, s.created_at, s.deleted,
                 )
             for st in body.sets:
                 await conn.execute(
@@ -133,7 +135,7 @@ async def pull(since: int = 0):
     """Return sessions + sets with seq > since, plus the max seq as the cursor."""
     async with _pool.acquire() as conn:
         srows = await conn.fetch(
-            "SELECT id, date, workout_id, device_id, created_at, seq "
+            "SELECT id, date, workout_id, device_id, created_at, deleted, seq "
             "FROM sessions WHERE seq > $1 ORDER BY seq",
             since,
         )
@@ -154,6 +156,7 @@ async def pull(since: int = 0):
                 "workout_id": r["workout_id"],
                 "device_id": r["device_id"],
                 "created_at": r["created_at"],
+                "deleted": r["deleted"],
             }
         )
     sets = []

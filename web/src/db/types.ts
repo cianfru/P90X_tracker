@@ -94,6 +94,8 @@ export interface Session {
   deviceId: string
   /** Client timestamp (ms) when the session row was created. */
   createdAt: number
+  /** Soft-delete (started the wrong routine); its sets are soft-deleted too. */
+  deleted?: boolean
 }
 
 /**

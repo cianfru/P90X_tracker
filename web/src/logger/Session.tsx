@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Flag, Trash2 } from 'lucide-react'
 import { db } from '../db'
-import { templateExercises } from '../db/repo'
+import { deleteSession, templateExercises } from '../db/repo'
 import { fmtDate } from '../lib/id'
 import { ExerciseCard } from './ExerciseCard'
+import { Recap } from './Recap'
 import { Stat } from './ui'
 
 /*
- * Session — the gym screen. Header carries live totals; each template exercise
- * is a collapsible card (accordion, first one open). All state lives in Dexie,
- * so totals and set lists update the instant a set is logged.
+ * Session — the gym screen. "Log & next" advances through the routine in
+ * order; logging the last exercise (or tapping the flag) opens the recap,
+ * which compares today against previous sessions of the same workout.
+ * The trash control soft-deletes a session started by mistake.
  */
 export function Session({
   sessionId,
@@ -34,9 +36,10 @@ export function Session({
   )
 
   const [open, setOpen] = useState<string | null>(null)
+  const [showRecap, setShowRecap] = useState(false)
   useEffect(() => {
-    if (open === null && exercises?.length) setOpen(exercises[0].id)
-  }, [exercises, open])
+    if (open === null && exercises?.length && !showRecap) setOpen(exercises[0].id)
+  }, [exercises, open, showRecap])
 
   const live = (sets ?? []).filter((s) => !s.deleted)
   const totalSets = live.length
@@ -45,6 +48,37 @@ export function Session({
     (a, s) => a + (s.weightKg ? s.reps * s.weightKg : 0),
     0,
   )
+
+  function handleLogged(exerciseId: string) {
+    if (!exercises) return
+    const i = exercises.findIndex((e) => e.id === exerciseId)
+    const next = exercises[i + 1]
+    if (next) {
+      setOpen(next.id)
+    } else {
+      setOpen(null)
+      setShowRecap(true)
+    }
+  }
+
+  async function handleDelete() {
+    const ok = window.confirm(
+      'Delete this session? Its logged sets are removed too.',
+    )
+    if (!ok) return
+    await deleteSession(sessionId)
+    onBack()
+  }
+
+  if (showRecap) {
+    return (
+      <Recap
+        sessionId={sessionId}
+        onBack={() => setShowRecap(false)}
+        onExit={onBack}
+      />
+    )
+  }
 
   return (
     <div>
@@ -69,6 +103,22 @@ export function Session({
           <Stat n={totalReps} label="reps" />
           <Stat n={tonnage} label="kg" />
         </div>
+        <button
+          onClick={() => setShowRecap(true)}
+          aria-label="finish workout"
+          title="finish — recap vs previous sessions"
+          className="text-emerald-400 active:text-emerald-300"
+        >
+          <Flag size={18} />
+        </button>
+        <button
+          onClick={handleDelete}
+          aria-label="delete session"
+          title="delete this session"
+          className="text-zinc-600 active:text-rose-400"
+        >
+          <Trash2 size={18} />
+        </button>
       </div>
 
       <div className="space-y-2.5 px-4 pt-4 pb-24">
@@ -79,6 +129,7 @@ export function Session({
             sessionId={sessionId}
             isOpen={open === ex.id}
             onToggle={() => setOpen(open === ex.id ? null : ex.id)}
+            onLogged={handleLogged}
           />
         ))}
       </div>

@@ -105,10 +105,11 @@ function monthRange(first: string, last: string): string[] {
 }
 
 export function computeAnalytics(
-  sessions: Session[],
+  allSessions: Session[],
   sets: WorkoutSet[],
   exercises: Exercise[],
 ): Analytics {
+  const sessions = allSessions.filter((s) => !s.deleted)
   const live = sets.filter((s) => !s.deleted)
   const dateOf = new Map(sessions.map((s) => [s.id, s.date]))
   const exById = new Map(exercises.map((e) => [e.id, e]))

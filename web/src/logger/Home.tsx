@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Dumbbell, Minus, Plus } from 'lucide-react'
 import { db } from '../db'
 import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
+import { getBodyweight, setBodyweight } from './effort'
 import { fmtDate, todayISO } from '../lib/id'
 import { Label } from './ui'
 
@@ -29,14 +30,29 @@ const PROGRAMS: { id: Program; blurb: string; accent: string }[] = [
 export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
   const templates = useLiveQuery(() => db.templates.orderBy('name').toArray())
   const [program, setProgram] = useState<Program | null>(null)
+  const [bw, setBw] = useState(getBodyweight())
   const today = todayISO()
 
+  const changeBw = (delta: number) => {
+    const v = Math.max(40, Math.min(200, bw + delta))
+    setBw(v)
+    setBodyweight(v)
+  }
+
   const todaySessions = useLiveQuery(
-    () => db.sessions.where('date').equals(today).toArray(),
+    async () =>
+      (await db.sessions.where('date').equals(today).toArray()).filter(
+        (s) => !s.deleted,
+      ),
     [today],
   )
   const recent = useLiveQuery(() =>
-    db.sessions.orderBy('createdAt').reverse().limit(5).toArray(),
+    db.sessions
+      .orderBy('createdAt')
+      .reverse()
+      .filter((s) => !s.deleted)
+      .limit(5)
+      .toArray(),
   )
   const counts = useLiveQuery(async () => {
     const ids = [
@@ -162,6 +178,32 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
           </div>
         </div>
       )}
+
+      {/* Bodyweight — feeds the effort colour coding (vest math, thresholds). */}
+      <div className="mt-7 flex items-center justify-between rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-3.5 py-2.5">
+        <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
+          bodyweight
+        </span>
+        <span className="flex items-center gap-2">
+          <button
+            onClick={() => changeBw(-1)}
+            aria-label="decrease bodyweight"
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-300 active:scale-95"
+          >
+            <Minus size={14} />
+          </button>
+          <span className="w-16 text-center font-mono text-sm text-zinc-200">
+            {bw} kg
+          </span>
+          <button
+            onClick={() => changeBw(1)}
+            aria-label="increase bodyweight"
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-300 active:scale-95"
+          >
+            <Plus size={14} />
+          </button>
+        </span>
+      </div>
     </div>
   )
 }
