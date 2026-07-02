@@ -15,6 +15,12 @@ const SCOPE =
 const CLIENT_ID_KEY = 'p90x-google-client-id'
 const ACCOUNT_KEY = 'p90x-google-account'
 
+// The app's public OAuth Client ID (not a secret — it's embedded in any browser
+// app). Baked in so sign-in works out of the box on every device; a settings
+// field or VITE_GOOGLE_CLIENT_ID env var can still override it.
+const DEFAULT_CLIENT_ID =
+  '263131716163-qb9qeodvseeff1l776ge27asfbcl6lcl.apps.googleusercontent.com'
+
 export interface GoogleAccount {
   email: string
   name: string
@@ -26,7 +32,7 @@ export function googleClientId(): string {
   return (
     localStorage.getItem(CLIENT_ID_KEY) ||
     (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ||
-    ''
+    DEFAULT_CLIENT_ID
   )
 }
 export function setGoogleClientId(id: string): void {
