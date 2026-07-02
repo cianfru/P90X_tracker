@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   device_id   TEXT        NOT NULL,
   created_at  BIGINT      NOT NULL,               -- client timestamp (ms)
   location    TEXT,                                -- where trained (city / IATA / "casa")
+  lat         DOUBLE PRECISION,                    -- GPS captured at workout start
+  lon         DOUBLE PRECISION,
   form        REAL,                                -- self-assessed readiness 1-10
   notes       TEXT,                                -- free-text day notes
   supplements JSONB       NOT NULL DEFAULT '[]',   -- typed: creatine/protein/maca
@@ -24,6 +26,8 @@ CREATE INDEX IF NOT EXISTS sessions_seq_idx ON sessions (seq);
 -- Migrations for databases created before these columns existed.
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS form REAL;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS supplements JSONB NOT NULL DEFAULT '[]';

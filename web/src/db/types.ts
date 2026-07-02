@@ -21,10 +21,10 @@ export type ModifierEffect = 'harder' | 'easier' | 'neutral'
 
 /**
  * Supplements taken on a training day. The spreadsheet noted these per day as
- * letter-sets — `Cp` (creatine + protein), `C`, `P`, or `Cpm`/`C/P/M` adding
- * maca (m). Typed, not text.
+ * letter-sets — `Cp` (creatine + protein), `C`, `P`, `Cpm`/`C/P/M` adding
+ * maca (m), or `Cpa` adding aminos (a). Typed, not text.
  */
-export const SUPPLEMENTS = ['creatine', 'protein', 'maca'] as const
+export const SUPPLEMENTS = ['creatine', 'protein', 'maca', 'aminos'] as const
 export type Supplement = (typeof SUPPLEMENTS)[number]
 
 export interface ModifierMeta {
@@ -108,6 +108,9 @@ export interface Session {
    * Geocoded client-side for the map; the raw label is always preserved.
    */
   location?: string
+  /** GPS captured when the workout was started (device geolocation). */
+  lat?: number
+  lon?: number
   /** Self-assessed form/readiness that day, 1–10 (half-points allowed). */
   form?: number
   /** Free-text notes explaining the day ("caldo", "stanco", "dolore schiena"…). */

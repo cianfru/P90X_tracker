@@ -13,7 +13,7 @@ import type { Modifier, Session, Supplement, WorkoutSet } from './types'
  */
 
 const FLAG = 'p90x-history-seeded'
-const META_FLAG = 'p90x-history-meta-seeded'
+const META_FLAG = 'p90x-history-meta-seeded-v2' // bump to re-backfill corrected meta
 const IMPORT_DEVICE = 'import'
 const CHUNK = 3000
 

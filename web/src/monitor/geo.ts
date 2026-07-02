@@ -119,6 +119,45 @@ export interface ResolvedLocation extends Place {
   raw: string
 }
 
+function haversineKm(
+  aLat: number,
+  aLon: number,
+  bLat: number,
+  bLon: number,
+): number {
+  const R = 6371
+  const dLat = ((bLat - aLat) * Math.PI) / 180
+  const dLon = ((bLon - aLon) * Math.PI) / 180
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((aLat * Math.PI) / 180) *
+      Math.cos((bLat * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(s))
+}
+
+/**
+ * Nearest known place to a coordinate, within `maxKm`. Used to turn a GPS fix
+ * captured at workout start into a familiar location label. null if nowhere
+ * known is close enough (then we keep the raw coordinates only).
+ */
+export function nearestPlace(
+  lat: number,
+  lon: number,
+  maxKm = 150,
+): Place | null {
+  let best: Place | null = null
+  let bestKm = Infinity
+  for (const [key, p] of Object.entries(PLACES)) {
+    const km = haversineKm(lat, lon, p.lat, p.lon)
+    if (km < bestKm) {
+      bestKm = km
+      best = { key, ...p }
+    }
+  }
+  return best && bestKm <= maxKm ? best : null
+}
+
 /** Resolve a raw location label to a known place, or null if unrecognised. */
 export function resolveLocation(raw: string): ResolvedLocation | null {
   const label = raw.trim()

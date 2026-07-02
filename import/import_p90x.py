@@ -79,23 +79,25 @@ def parse_form(v):
         f = float(s)
     return f if 1 <= f <= 10 else None
 
-# Supplement shorthand: the owner writes letters for what he took —
-# c=creatine, p=protein, m=maca — as letter-sets (`Cp`, `Cpm`, `CPM`),
-# slash/space-separated (`C/P/M`, `Cr/pr`), or spelled out. A cell can mix a
-# supplement token with a free note (`Cp, Anavar`); tokens route individually.
-SUPP_LETTER = {"c": "creatine", "p": "protein", "m": "maca"}
+# Supplement shorthand: the owner writes letters for what he took — c=creatine,
+# p=protein, m=maca, a=aminos — as letter-sets (`Cp`, `Cpm`, `Cpa`),
+# slash/space-separated (`C/P/M`, `Cr/pr`), or spelled out. `Co` is a typo for
+# `Cp`. A cell can mix a supplement token with a free note (`Cp, Anavar`).
+SUPP_LETTER = {"c": "creatine", "p": "protein", "m": "maca", "a": "aminos"}
 SPELLED = {
     "cr": "creatine", "creat": "creatine", "creatina": "creatine", "creatine": "creatine",
     "pr": "protein", "prot": "protein", "prote": "protein", "protein": "protein",
     "proteina": "protein", "proteine": "protein",
     "maca": "maca",
+    "amino": "aminos", "aminos": "aminos", "amini": "aminos", "aminoacidi": "aminos",
+    "co": "creatine,protein",  # common typo for "Cp"
 }
 
 def token_supps(tok):
     """Supplements a single token denotes, or None if it isn't supplement shorthand."""
     low = tok.lower()
-    if low in SPELLED: return {SPELLED[low]}
-    if re.fullmatch(r"[cpm]+", low): return {SUPP_LETTER[ch] for ch in low}
+    if low in SPELLED: return set(SPELLED[low].split(","))
+    if re.fullmatch(r"[cpma]+", low): return {SUPP_LETTER[ch] for ch in low}
     return None
 
 def classify_annotations(cells):
@@ -117,7 +119,7 @@ def classify_annotations(cells):
                 leftover.append(part)
         if leftover:
             notes.append(" ".join(leftover))
-    order = {"creatine": 0, "protein": 1, "maca": 2}
+    order = {"creatine": 0, "protein": 1, "maca": 2, "aminos": 3}
     return sorted(supp, key=lambda x: order[x]), ", ".join(notes)
 
 def parse_value(v, exercise):

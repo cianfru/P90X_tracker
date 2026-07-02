@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, MapPin } from 'lucide-react'
+import { ChevronDown, LocateFixed, MapPin } from 'lucide-react'
 import type { Session, Supplement } from '../db'
 import { SUPPLEMENTS } from '../db'
 import { recentLocations, updateSessionMeta } from '../db/repo'
+import { capturePosition, type GeoState } from './geolocate'
 import { Chip } from './ui'
 
 /*
@@ -16,11 +17,13 @@ const SUPP_LABEL: Record<Supplement, string> = {
   creatine: 'Creatine',
   protein: 'Protein',
   maca: 'Maca',
+  aminos: 'Aminos',
 }
 const SUPP_SHORT: Record<Supplement, string> = {
   creatine: 'C',
   protein: 'P',
   maca: 'M',
+  aminos: 'A',
 }
 
 function summary(s: Session): string {
@@ -36,6 +39,7 @@ export function SessionMeta({ session }: { session: Session }) {
   const [open, setOpen] = useState(false)
   const [location, setLocation] = useState(session.location ?? '')
   const [notes, setNotes] = useState(session.notes ?? '')
+  const [geo, setGeo] = useState<GeoState>('idle')
   const recent = useLiveQuery(() => recentLocations(), []) ?? []
 
   // Reset the local text fields only when we switch to a different session.
@@ -43,12 +47,21 @@ export function SessionMeta({ session }: { session: Session }) {
   useEffect(() => setLocation(session.location ?? ''), [session.id])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setNotes(session.notes ?? ''), [session.id])
+  // Fill the field when geolocation auto-detects a place, without clobbering typing.
+  useEffect(() => {
+    if (session.location && !location) setLocation(session.location)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.location])
 
   const form = session.form ?? null
   const supplements = session.supplements ?? []
 
   const commitLocation = (v: string) =>
     updateSessionMeta(session.id, { location: v.trim() || undefined })
+  const useMyLocation = async () => {
+    setGeo('locating')
+    setGeo(await capturePosition(session.id, !location.trim()))
+  }
   const commitNotes = (v: string) =>
     updateSessionMeta(session.id, { notes: v.trim() || undefined })
   const setForm = (v: number | null) =>
@@ -88,8 +101,27 @@ export function SessionMeta({ session }: { session: Session }) {
         <div className="space-y-4 border-t border-zinc-800/70 px-4 pt-3 pb-4">
           {/* Location */}
           <div>
-            <div className="mb-1.5 font-mono text-xs tracking-wide text-zinc-500 uppercase">
-              location
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
+                location
+              </span>
+              <button
+                onClick={useMyLocation}
+                disabled={geo === 'locating'}
+                className="flex items-center gap-1 font-mono text-xs text-sky-400 active:text-sky-300 disabled:opacity-50"
+              >
+                <LocateFixed
+                  size={12}
+                  className={geo === 'locating' ? 'animate-pulse' : ''}
+                />
+                {geo === 'locating'
+                  ? 'locating…'
+                  : geo === 'denied'
+                    ? 'permission denied'
+                    : geo === 'unavailable'
+                      ? 'unavailable'
+                      : 'use my location'}
+              </button>
             </div>
             <input
               value={location}

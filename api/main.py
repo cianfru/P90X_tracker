@@ -61,6 +61,8 @@ class Session(BaseModel):
     device_id: str
     created_at: int
     location: str | None = None
+    lat: float | None = None
+    lon: float | None = None
     form: float | None = None
     notes: str | None = None
     supplements: list[str] = []
@@ -99,15 +101,18 @@ async def push(body: PushBody):
                 await conn.execute(
                     """
                     INSERT INTO sessions (id, date, workout_id, device_id, created_at,
-                                          location, form, notes, supplements, deleted, seq)
-                    VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9::jsonb, $10,
-                            nextval('sync_seq'))
+                                          location, lat, lon, form, notes, supplements,
+                                          deleted, seq)
+                    VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb,
+                            $12, nextval('sync_seq'))
                     ON CONFLICT (id) DO UPDATE SET
                       date = EXCLUDED.date,
                       workout_id = EXCLUDED.workout_id,
                       device_id = EXCLUDED.device_id,
                       created_at = EXCLUDED.created_at,
                       location = EXCLUDED.location,
+                      lat = EXCLUDED.lat,
+                      lon = EXCLUDED.lon,
                       form = EXCLUDED.form,
                       notes = EXCLUDED.notes,
                       supplements = EXCLUDED.supplements,
@@ -115,7 +120,8 @@ async def push(body: PushBody):
                       seq = nextval('sync_seq')
                     """,
                     s.id, s.date, s.workout_id, s.device_id, s.created_at,
-                    s.location, s.form, s.notes, json.dumps(s.supplements), s.deleted,
+                    s.location, s.lat, s.lon, s.form, s.notes,
+                    json.dumps(s.supplements), s.deleted,
                 )
             for st in body.sets:
                 await conn.execute(
@@ -147,7 +153,7 @@ async def pull(since: int = 0):
     async with _pool.acquire() as conn:
         srows = await conn.fetch(
             "SELECT id, date, workout_id, device_id, created_at, "
-            "location, form, notes, supplements, deleted, seq "
+            "location, lat, lon, form, notes, supplements, deleted, seq "
             "FROM sessions WHERE seq > $1 ORDER BY seq",
             since,
         )
@@ -170,6 +176,8 @@ async def pull(since: int = 0):
                 "device_id": r["device_id"],
                 "created_at": r["created_at"],
                 "location": r["location"],
+                "lat": r["lat"],
+                "lon": r["lon"],
                 "form": r["form"],
                 "notes": r["notes"],
                 "supplements": json.loads(supp) if isinstance(supp, str) else (supp or []),

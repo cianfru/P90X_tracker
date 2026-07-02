@@ -79,7 +79,7 @@ export async function logSet(input: {
 export async function updateSessionMeta(
   id: string,
   patch: Partial<
-    Pick<Session, 'location' | 'form' | 'notes' | 'supplements'>
+    Pick<Session, 'location' | 'form' | 'notes' | 'supplements' | 'lat' | 'lon'>
   >,
 ): Promise<void> {
   await db.sessions.update(id, patch)

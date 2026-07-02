@@ -51,6 +51,8 @@ interface WireSession {
   device_id: string
   created_at: number
   location: string | null
+  lat: number | null
+  lon: number | null
   form: number | null
   notes: string | null
   supplements: Supplement[]
@@ -76,6 +78,8 @@ const sessionToWire = (s: Session): WireSession => ({
   device_id: s.deviceId,
   created_at: s.createdAt,
   location: s.location ?? null,
+  lat: s.lat ?? null,
+  lon: s.lon ?? null,
   form: s.form ?? null,
   notes: s.notes ?? null,
   supplements: s.supplements ?? [],
@@ -103,6 +107,8 @@ const wireToSession = (w: WireSession): Session => {
     deleted: !!w.deleted,
   }
   if (w.location) s.location = w.location
+  if (w.lat != null) s.lat = w.lat
+  if (w.lon != null) s.lon = w.lon
   if (w.form != null) s.form = w.form
   if (w.notes) s.notes = w.notes
   if (w.supplements?.length) s.supplements = w.supplements

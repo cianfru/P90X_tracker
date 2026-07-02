@@ -19,6 +19,7 @@ import { SUPPLEMENTS } from '../db'
 import { fmtDate } from '../lib/id'
 import { computeAnalytics, progressionFor } from './analytics'
 import { resolveLocation } from './geo'
+import { computeIntensity, type Intensity } from './intensity'
 
 // Leaflet is heavy; only pull it in when the Monitor (already lazy) renders.
 const TravelMap = lazy(() =>
@@ -114,6 +115,11 @@ export function Monitor() {
     }
   }, [sessions])
 
+  const intensity = useMemo<Map<string, Intensity>>(
+    () => (ready ? computeIntensity(sessions, sets, exercises) : new Map()),
+    [ready, sessions, sets, exercises],
+  )
+
   const [exId, setExId] = useState<string | null>(null)
   const selected =
     logged.find((e) => e.id === exId) ??
@@ -190,7 +196,11 @@ export function Monitor() {
               </div>
             }
           >
-            <TravelMap sessions={sessions ?? []} templates={templates ?? []} />
+            <TravelMap
+              sessions={sessions ?? []}
+              templates={templates ?? []}
+              intensity={intensity}
+            />
           </Suspense>
         </Card>
       )}

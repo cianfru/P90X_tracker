@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Flag, Trash2 } from 'lucide-react'
 import { db } from '../db'
 import { deleteSession, templateExercises } from '../db/repo'
-import { fmtDate } from '../lib/id'
+import { capturePosition } from './geolocate'
+import { fmtDate, getDeviceId } from '../lib/id'
 import { ExerciseCard } from './ExerciseCard'
 import { Recap } from './Recap'
 import { SessionMeta } from './SessionMeta'
@@ -41,6 +42,21 @@ export function Session({
   useEffect(() => {
     if (open === null && exercises?.length && !showRecap) setOpen(exercises[0].id)
   }, [exercises, open, showRecap])
+
+  // Capture GPS once, when a workout is freshly started on this device.
+  const triedGeo = useRef(false)
+  useEffect(() => {
+    if (!session || triedGeo.current) return
+    const fresh =
+      session.deviceId === getDeviceId() &&
+      session.lat == null &&
+      Date.now() - session.createdAt < 5 * 60 * 1000
+    if (fresh && !sessionStorage.getItem(`geo-${session.id}`)) {
+      triedGeo.current = true
+      sessionStorage.setItem(`geo-${session.id}`, '1')
+      void capturePosition(session.id, !session.location)
+    }
+  }, [session])
 
   const live = (sets ?? []).filter((s) => !s.deleted)
   const totalSets = live.length
