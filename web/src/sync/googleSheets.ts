@@ -109,6 +109,14 @@ function sheetKey(): string {
   return `p90x-sheet-id-${cachedAccount()?.email ?? 'anon'}`
 }
 
+// First-run migration gate: auto-sync stays off until the account's initial
+// choice (upload existing / start clean / restore) has completed, so it can't
+// race that choice and write duplicate rows.
+const readyKey = () => `p90x-gsheet-ready-${cachedAccount()?.email ?? 'anon'}`
+export const migrationDone = (): boolean => !!localStorage.getItem(readyKey())
+export const markMigrationDone = (): void =>
+  localStorage.setItem(readyKey(), '1')
+
 async function findSpreadsheet(): Promise<string | null> {
   const q = encodeURIComponent(
     `name='${SHEET_TITLE}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
@@ -207,6 +215,7 @@ export async function pushAll(
   await db.outbox.clear()
   await db.meta.put({ key: rowKey(SESSIONS), value: sessions.length + 1 })
   await db.meta.put({ key: rowKey(SETS), value: sets.length + 1 })
+  markMigrationDone()
 }
 
 /** Pull rows appended since our cursor and upsert them into Dexie. */

@@ -13,6 +13,7 @@ import { useOnlineStatus } from './lib/useOnlineStatus'
 import { ensureSeeded, needsHistorySeed, seedHistory, seedHistoryMeta } from './db'
 import { useSync } from './sync/useSync'
 import { cachedAccount, googleActive } from './sync/googleAuth'
+import { migrationDone } from './sync/googleSheets'
 import { useGoogleSync } from './sync/useGoogleSync'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
@@ -41,7 +42,8 @@ export default function App() {
   const online = useOnlineStatus()
   const gActive = googleActive()
   const syncState = useSync() // no-ops while Google is the active backend
-  const gSync = useGoogleSync(gActive)
+  // Auto-sync only after the account's first-run migration choice is done.
+  const gSync = useGoogleSync(gActive && migrationDone())
 
   useEffect(() => {
     void (async () => {

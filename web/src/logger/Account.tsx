@@ -19,6 +19,7 @@ import {
 } from '../sync/googleAuth'
 import {
   ensureSpreadsheet,
+  markMigrationDone,
   pushAll,
   syncGoogle,
 } from '../sync/googleSheets'
@@ -62,8 +63,11 @@ export function Account({
         const count = await db.sessions.count()
         setChoose({ id, count })
       } else {
+        // Existing sheet: restore/pull, then enable auto-sync.
         setBusy('sync')
         await syncGoogle()
+        markMigrationDone()
+        onChange()
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -81,6 +85,7 @@ export function Account({
         setPct(Math.round((done / total) * 100)),
       )
       setChoose(null)
+      onChange() // migration done → auto-sync can start
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -103,7 +108,9 @@ export function Account({
       // Don't re-seed the bundled (owner's) history onto this account.
       localStorage.setItem('p90x-history-seeded', '1')
       localStorage.setItem('p90x-history-meta-seeded-v2', '1')
+      markMigrationDone()
       setChoose(null)
+      onChange()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
