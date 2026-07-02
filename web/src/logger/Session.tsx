@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Flag, Trash2 } from 'lucide-react'
 import { db } from '../db'
@@ -39,13 +39,27 @@ export function Session({
 
   const [open, setOpen] = useState<string | null>(null)
   const [showRecap, setShowRecap] = useState(false)
-  const [round, setRound] = useState(1)
-  const rounds = template?.rounds ?? 1
+  // The full performed order (exercise ids, repeats allowed): an explicit
+  // `sequence` for non-uniform workouts, else the list repeated `rounds` times.
+  const walk = useMemo<string[]>(() => {
+    if (!exercises?.length) return []
+    if (template?.sequence?.length) return template.sequence
+    const r = template?.rounds ?? 1
+    return Array.from({ length: r }).flatMap(() => exercises.map((e) => e.id))
+  }, [exercises, template?.sequence, template?.rounds])
+  const [pos, setPos] = useState(0)
+  useEffect(() => setPos(0), [sessionId])
   useEffect(() => {
-    if (open === null && exercises?.length && !showRecap) setOpen(exercises[0].id)
-  }, [exercises, open, showRecap])
-  // Reset the round counter when switching sessions.
-  useEffect(() => setRound(1), [sessionId])
+    if (open === null && walk.length && !showRecap) setOpen(walk[0])
+  }, [walk, open, showRecap])
+
+  // Round of the exercise currently at `pos` (nth time it appears in the walk).
+  const curId = walk[pos]
+  const roundOf = (upto: number) =>
+    walk.slice(0, upto + 1).filter((id) => id === walk[upto]).length
+  const totalRoundsOf = (id: string) => walk.filter((x) => x === id).length
+  const curRound = curId ? roundOf(pos) : 1
+  const curTotal = curId ? totalRoundsOf(curId) : 1
 
   // Capture GPS once, when a workout is freshly started on this device.
   const triedGeo = useRef(false)
@@ -71,15 +85,14 @@ export function Session({
   )
 
   function handleLogged(exerciseId: string) {
-    if (!exercises) return
-    const i = exercises.findIndex((e) => e.id === exerciseId)
-    const next = exercises[i + 1]
-    if (next) {
-      setOpen(next.id)
-    } else if (round < rounds) {
-      // Same exercises again — start the next round from the top.
-      setRound((r) => r + 1)
-      setOpen(exercises[0].id)
+    if (!walk.length) return
+    // Advance from this exercise's slot in the walk to the next slot.
+    let from = walk.indexOf(exerciseId, pos)
+    if (from === -1) from = pos
+    const nextPos = from + 1
+    if (nextPos < walk.length) {
+      setPos(nextPos)
+      setOpen(walk[nextPos])
     } else {
       setOpen(null)
       setShowRecap(true)
@@ -118,9 +131,9 @@ export function Session({
         <div className="flex-1">
           <div className="flex items-center gap-2 leading-tight font-semibold capitalize">
             {template?.name ?? '…'}
-            {rounds > 1 && (
+            {curTotal > 1 && (
               <span className="rounded bg-sky-500/20 px-1.5 py-0.5 font-mono text-xs font-medium tracking-wide text-sky-300">
-                round {round}/{rounds}
+                round {curRound}/{curTotal}
               </span>
             )}
           </div>

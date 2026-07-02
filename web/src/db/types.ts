@@ -99,6 +99,13 @@ export interface WorkoutTemplate {
    * exercise repeats equally (uniform rounds); mixed workouts stay 1.
    */
   rounds?: number
+  /**
+   * Explicit performed order (exercise ids, repeats allowed) for workouts whose
+   * rounds AREN'T uniform — e.g. x2 shoulders & arms is 3 rounds of 7 core moves
+   * then a custom extra round of 6 others. When set, the logger walks this exact
+   * sequence and `rounds` is ignored. Cards still render once per exercise.
+   */
+  sequence?: string[]
 }
 
 export interface Session {
