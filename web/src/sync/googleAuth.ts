@@ -7,10 +7,10 @@
  * backup/restore. The app works fully without a Client ID configured.
  */
 
-// Drive.file: access only to files this app creates (the logbook sheet) — a
-// non-sensitive scope, so the consent screen stays friendly. Plus identity.
+// Sheets (read/write the logbook) + drive.file (find/create only the files this
+// app makes) + identity. drive.file keeps us out of the rest of your Drive.
 const SCOPE =
-  'https://www.googleapis.com/auth/drive.file openid email profile'
+  'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file openid email profile'
 
 const CLIENT_ID_KEY = 'p90x-google-client-id'
 const ACCOUNT_KEY = 'p90x-google-account'
@@ -133,8 +133,9 @@ function requestToken(interactive: boolean): Promise<string> {
           tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000
           resolve(resp.access_token)
         }
-        // Empty prompt = silent (reuse existing grant); 'consent'/'' as needed.
-        client.requestAccessToken({ prompt: interactive ? '' : 'none' })
+        // Interactive sign-in forces the full consent screen so every scope
+        // (incl. Sheets/Drive) is granted; refreshes stay silent.
+        client.requestAccessToken({ prompt: interactive ? 'consent' : 'none' })
       })
       .catch(reject)
   })
