@@ -9,9 +9,10 @@ import { fmtDate, todayISO } from '../lib/id'
 import { Label } from './ui'
 
 /*
- * Home — two steps: first pick a program (P90X or P90X2), then pick a workout
- * from that program. Resume-today and recent sessions (which span both
- * programs) stay on the program screen as shortcuts. All reads are live.
+ * Home — two steps: first pick a program (P90X / P90X2 / P90X3 / Body Beast),
+ * then pick a workout from that program. Resume-today and recent sessions
+ * (which span all programs) stay on the program screen as shortcuts. Programs
+ * with no workouts yet (Body Beast) show a "coming soon" slot. All reads live.
  */
 
 const PROGRAMS: { id: Program; blurb: string; accent: string }[] = [
@@ -24,6 +25,16 @@ const PROGRAMS: { id: Program; blurb: string; accent: string }[] = [
     id: 'P90X2',
     blurb: 'X2 stability & power block',
     accent: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+  },
+  {
+    id: 'P90X3',
+    blurb: '30-min resistance block',
+    accent: 'border-violet-500/30 bg-violet-500/10 text-violet-300',
+  },
+  {
+    id: 'Body Beast',
+    blurb: 'Coming soon',
+    accent: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   },
 ]
 
@@ -89,6 +100,14 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
           <ChevronLeft size={18} /> programs
         </button>
         <Label>{program} · start a workout</Label>
+        {workouts.length === 0 && (
+          <div className="mt-3 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/40 px-4 py-8 text-center">
+            <p className="font-semibold text-zinc-300">No workouts yet</p>
+            <p className="mt-1 font-mono text-xs text-zinc-500">
+              {program} routines land here once the full sheet is added.
+            </p>
+          </div>
+        )}
         <div className="mt-2 space-y-2.5">
           {workouts.map((t) => (
             <button

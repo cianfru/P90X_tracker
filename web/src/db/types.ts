@@ -74,8 +74,8 @@ export interface Exercise {
   aliases: string[]
 }
 
-/** The two training programs the workouts belong to. */
-export type Program = 'P90X' | 'P90X2'
+/** The training programs the workouts belong to. */
+export type Program = 'P90X' | 'P90X2' | 'P90X3' | 'Body Beast'
 
 export interface WorkoutTemplate {
   id: string

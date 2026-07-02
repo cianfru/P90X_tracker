@@ -4,9 +4,10 @@ import catalogJson from './catalog.json'
 
 /*
  * Bundled reference data: the exercise catalog (canonical names + aliases +
- * type) and the 9 workout templates (exercises in performed order), generated
- * from the real spreadsheet by /import/import_p90x.py. Ships with the app so
- * the logger works on first run, before any history import (Phase 4) or sync.
+ * type) and the workout templates (exercises in performed order) across the
+ * P90X, P90X2 and P90X3 programs. P90X/P90X2 come from the real spreadsheet
+ * via /import/import_p90x.py; P90X3 is seeded from the official worksheets
+ * (no history). Ships with the app so the logger works on first run.
  */
 
 interface Catalog {
