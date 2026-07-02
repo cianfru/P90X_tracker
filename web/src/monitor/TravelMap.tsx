@@ -119,7 +119,7 @@ export function TravelMap({
 
   if (!places.length) {
     return (
-      <div className="py-8 text-center text-sm text-zinc-500">
+      <div className="py-8 text-center text-sm text-ink-3">
         No located sessions yet — add a location when you train.
       </div>
     )
@@ -127,7 +127,7 @@ export function TravelMap({
 
   return (
     <div>
-      <div className="overflow-hidden rounded-xl border border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-hair">
         <MapContainer
           center={[25, 60]}
           zoom={2}
@@ -156,7 +156,7 @@ export function TravelMap({
                 <Popup>
                   <div className="text-sm font-semibold text-zinc-900">
                     {p.name}
-                    <span className="font-normal text-zinc-500">
+                    <span className="font-normal text-ink-3">
                       {' '}
                       · {p.country}
                     </span>
@@ -175,7 +175,7 @@ export function TravelMap({
 
       {/* Intensity legend */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-mono text-[10px] tracking-wider text-zinc-500 uppercase">
+        <span className="text-[10px] tracking-wider text-ink-3 uppercase">
           intensity
         </span>
         {INTENSITY_LEGEND.map((b) => (
@@ -184,7 +184,7 @@ export function TravelMap({
               className="h-2.5 w-2.5 rounded-full"
               style={{ background: b.color }}
             />
-            <span className="text-xs text-zinc-400">{b.label}</span>
+            <span className="text-xs text-ink-3">{b.label}</span>
           </span>
         ))}
       </div>
@@ -192,16 +192,16 @@ export function TravelMap({
       {/* Per-place session list, coloured by each workout's intensity */}
       <div className="mt-3">
         {!place && (
-          <p className="text-center font-mono text-xs text-zinc-500">
+          <p className="text-center text-xs text-ink-3">
             tap a place to see its workouts
           </p>
         )}
         {place && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
+          <div className="rounded-xl border border-hair bg-black/25">
+            <div className="flex items-center justify-between border-b border-hair px-3 py-2">
               <div className="text-sm font-semibold">
                 {place.name}
-                <span className="font-normal text-zinc-500">
+                <span className="font-normal text-ink-3">
                   {' '}
                   · {place.sessions.length} session
                   {place.sessions.length > 1 ? 's' : ''}
@@ -209,7 +209,7 @@ export function TravelMap({
               </div>
               <button
                 onClick={() => setSelected(null)}
-                className="font-mono text-xs text-zinc-500 active:text-zinc-300"
+                className="text-xs text-ink-3 active:text-ink-2"
               >
                 clear
               </button>
@@ -220,21 +220,21 @@ export function TravelMap({
                 return (
                   <div
                     key={i}
-                    className="flex items-center gap-2.5 border-b border-zinc-800/50 px-3 py-1.5 text-sm last:border-0"
+                    className="flex items-center gap-2.5 border-b border-hair/50 px-3 py-1.5 text-sm last:border-0"
                   >
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ background: color }}
                       title={intensityLabel(s.score)}
                     />
-                    <span className="w-20 shrink-0 font-mono text-xs text-zinc-500">
+                    <span className="w-20 shrink-0 text-xs text-ink-3">
                       {fmtDate(s.date)}
                     </span>
-                    <span className="flex-1 truncate capitalize text-zinc-300">
+                    <span className="flex-1 truncate capitalize text-ink-2">
                       {s.workout}
                     </span>
                     <span
-                      className="font-mono text-xs font-semibold"
+                      className="text-xs font-semibold"
                       style={{ color }}
                     >
                       {s.score}

@@ -120,51 +120,55 @@ export function Session({
 
   return (
     <div>
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur">
-        <button
-          onClick={onBack}
-          aria-label="back"
-          className="text-zinc-400 active:text-zinc-200"
-        >
-          <ChevronLeft size={22} />
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 leading-tight font-semibold capitalize">
-            {template?.name ?? '…'}
-            {curTotal > 1 && (
-              <span className="rounded bg-sky-500/20 px-1.5 py-0.5 font-mono text-xs font-medium tracking-wide text-sky-300">
-                round {curRound}/{curTotal}
-              </span>
-            )}
+      <div className="frost sticky top-0 z-10 border-b border-hair px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            aria-label="back"
+            className="press flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-ink-2"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 leading-tight font-bold capitalize">
+              <span className="truncate">{template?.name ?? '…'}</span>
+              {curTotal > 1 && (
+                <span className="nums shrink-0 rounded-full bg-sky-400/20 px-2 py-0.5 text-xs font-bold text-sky-300">
+                  {curRound}/{curTotal}
+                </span>
+              )}
+            </div>
+            <div className="text-[13px] font-medium text-ink-3">
+              {session ? fmtDate(session.date) : ''}
+            </div>
           </div>
-          <div className="font-mono text-xs text-zinc-500">
-            {session ? fmtDate(session.date) : ''}
-          </div>
+          <button
+            onClick={() => setShowRecap(true)}
+            aria-label="finish workout"
+            title="finish — recap vs previous sessions"
+            className="press flex h-9 w-9 items-center justify-center rounded-full bg-[#37e29a]/15 text-[#37e29a]"
+          >
+            <Flag size={17} />
+          </button>
+          <button
+            onClick={handleDelete}
+            aria-label="delete session"
+            title="delete this session"
+            className="press flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-ink-3 active:text-rose-400"
+          >
+            <Trash2 size={17} />
+          </button>
         </div>
-        <div className="flex gap-3 font-mono text-xs text-zinc-400">
+        <div className="mt-2.5 flex items-center justify-around rounded-xl bg-black/20 py-2">
           <Stat n={totalSets} label="sets" />
+          <span className="h-6 w-px bg-hair" />
           <Stat n={totalReps} label="reps" />
+          <span className="h-6 w-px bg-hair" />
           <Stat n={tonnage} label="kg" />
         </div>
-        <button
-          onClick={() => setShowRecap(true)}
-          aria-label="finish workout"
-          title="finish — recap vs previous sessions"
-          className="text-emerald-400 active:text-emerald-300"
-        >
-          <Flag size={18} />
-        </button>
-        <button
-          onClick={handleDelete}
-          aria-label="delete session"
-          title="delete this session"
-          className="text-zinc-600 active:text-rose-400"
-        >
-          <Trash2 size={18} />
-        </button>
       </div>
 
-      <div className="space-y-2.5 px-4 pt-4 pb-24">
+      <div className="space-y-2.5 px-4 pt-4 pb-28">
         {session && <SessionMeta session={session} />}
         {exercises?.map((ex) => (
           <ExerciseCard

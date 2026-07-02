@@ -63,11 +63,14 @@ export default function App() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col">
-      <header className="flex items-center justify-between px-4 pt-8 pb-2">
+      <header className="frost sticky top-0 z-20 flex items-center justify-between px-5 pt-7 pb-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">P90X Logbook</h1>
-          <p className="mt-0.5 text-sm text-zinc-500">
-            Local-first · works fully offline
+          <h1 className="display text-[26px] leading-none">
+            P90<span className="text-[#37e29a]">X</span>
+            <span className="font-semibold text-ink-2"> Logbook</span>
+          </h1>
+          <p className="mt-1.5 text-[13px] font-medium text-ink-3">
+            Train anywhere · fully offline
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -75,7 +78,7 @@ export default function App() {
             importPct === null &&
             (syncState.syncing || syncState.pending > 0) && (
               <span
-                className="flex items-center gap-1 font-mono text-xs text-zinc-500"
+                className="nums flex items-center gap-1 text-xs text-ink-3"
                 title={
                   syncState.pending > 0
                     ? `${syncState.pending} change(s) pending sync`
@@ -90,9 +93,9 @@ export default function App() {
               </span>
             )}
           {importPct !== null ? (
-            <span className="flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 font-mono text-xs text-sky-300">
+            <span className="nums flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-300">
               <Loader2 size={13} className="animate-spin" />
-              importing {importPct}%
+              {importPct}%
             </span>
           ) : (
             <ConnPill online={online} />
@@ -100,14 +103,14 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 pb-24">
+      <main className="flex-1 px-4 pb-32">
         {view === 'home' ? (
           <Home onOpen={setSessionId} />
         ) : (
           <Suspense
             fallback={
-              <div className="mt-16 text-center font-mono text-sm text-zinc-500">
-                loading analytics…
+              <div className="mt-16 text-center text-sm text-ink-3">
+                Loading analytics…
               </div>
             }
           >
@@ -124,36 +127,47 @@ export default function App() {
 function ConnPill({ online }: { online: boolean }) {
   return (
     <span
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs ${
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
         online
-          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-          : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+          ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
+          : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
       }`}
       title={online ? 'Online — will sync' : 'Offline — logging locally'}
     >
       {online ? <Wifi size={13} /> : <WifiOff size={13} />}
-      {online ? 'online' : 'offline'}
+      {online ? 'Online' : 'Offline'}
     </span>
   )
 }
 
 function NavBar({ view, setView }: { view: View; setView: (v: View) => void }) {
-  const item = (id: View, Icon: typeof Dumbbell, label: string) => (
-    <button
-      onClick={() => setView(id)}
-      className={`flex flex-1 flex-col items-center gap-1 py-3 transition ${
-        view === id ? 'text-emerald-400' : 'text-zinc-500'
-      }`}
-    >
-      <Icon size={20} />
-      <span className="text-xs font-medium tracking-wide">{label}</span>
-    </button>
-  )
+  const item = (id: View, Icon: typeof Dumbbell, label: string) => {
+    const active = view === id
+    return (
+      <button
+        onClick={() => setView(id)}
+        className="press relative flex flex-1 flex-col items-center gap-1 py-2.5"
+      >
+        <span
+          className={`flex h-9 w-16 items-center justify-center rounded-full transition ${
+            active ? 'bg-[#37e29a]/15 text-[#37e29a]' : 'text-ink-3'
+          }`}
+        >
+          <Icon size={20} strokeWidth={active ? 2.5 : 2} />
+        </span>
+        <span
+          className={`text-[11px] font-semibold ${active ? 'text-ink' : 'text-ink-3'}`}
+        >
+          {label}
+        </span>
+      </button>
+    )
+  }
   return (
-    <nav className="fixed inset-x-0 bottom-0 border-t border-zinc-800 bg-zinc-900/95 backdrop-blur">
-      <div className="mx-auto flex max-w-md">
+    <nav className="frost fixed inset-x-0 bottom-0 z-20 border-t border-hair pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex max-w-md px-6">
         {item('home', Dumbbell, 'Train')}
-        {item('monitor', TrendingUp, 'Monitor')}
+        {item('monitor', TrendingUp, 'Progress')}
       </div>
     </nav>
   )

@@ -16,31 +16,17 @@ import { Label } from './ui'
  */
 
 const PROGRAMS: { id: Program; blurb: string; accent: string }[] = [
-  {
-    id: 'P90X',
-    blurb: 'Classic resistance block',
-    accent: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  },
-  {
-    id: 'P90X2',
-    blurb: 'X2 stability & power block',
-    accent: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
-  },
-  {
-    id: 'P90X3',
-    blurb: '30-min resistance block',
-    accent: 'border-violet-500/30 bg-violet-500/10 text-violet-300',
-  },
-  {
-    id: 'Body Beast',
-    blurb: 'Coming soon',
-    accent: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  },
+  { id: 'P90X', blurb: 'Classic resistance block', accent: '#ff6a3d' },
+  { id: 'P90X2', blurb: 'X2 stability & power', accent: '#3bc6ff' },
+  { id: 'P90X3', blurb: '30-minute resistance', accent: '#a78bfa' },
+  { id: 'Body Beast', blurb: 'Coming soon', accent: '#fbbf24' },
 ]
 
 export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
   const templates = useLiveQuery(() => db.templates.orderBy('name').toArray())
-  const [program, setProgram] = useState<Program | null>(null)
+  const [program, setProgram] = useState<{ id: Program; accent: string } | null>(
+    null,
+  )
   const [bw, setBw] = useState(getBodyweight())
   const today = todayISO()
 
@@ -90,36 +76,59 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
 
   // ---- Step 2: workouts within the chosen program ----
   if (program) {
-    const workouts = (templates ?? []).filter((t) => t.program === program)
+    const workouts = (templates ?? []).filter((t) => t.program === program.id)
     return (
-      <div className="pt-2">
+      <div className="pt-3">
         <button
           onClick={() => setProgram(null)}
-          className="mb-4 flex items-center gap-1.5 font-mono text-sm text-zinc-400 active:text-zinc-200"
+          className="press mb-5 flex items-center gap-1 text-sm font-semibold text-ink-2"
         >
-          <ChevronLeft size={18} /> programs
+          <ChevronLeft size={18} /> Programs
         </button>
-        <Label>{program} · start a workout</Label>
+        <h2 className="display text-2xl">
+          {program.id}
+          <span
+            className="ml-2 align-middle text-sm font-semibold"
+            style={{ color: program.accent }}
+          >
+            {workouts.length} workouts
+          </span>
+        </h2>
         {workouts.length === 0 && (
-          <div className="mt-3 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/40 px-4 py-8 text-center">
-            <p className="font-semibold text-zinc-300">No workouts yet</p>
-            <p className="mt-1 font-mono text-xs text-zinc-500">
-              {program} routines land here once the full sheet is added.
+          <div className="card mt-5 border-dashed px-4 py-10 text-center">
+            <p className="font-semibold text-ink">No workouts yet</p>
+            <p className="mt-1 text-[13px] text-ink-3">
+              {program.id} routines land here once the full sheet is added.
             </p>
           </div>
         )}
-        <div className="mt-2 space-y-2.5">
+        <div className="mt-4 space-y-2.5">
           {workouts.map((t) => (
             <button
               key={t.id}
               onClick={() => start(t.id)}
-              className="flex w-full items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-4 transition hover:border-zinc-700 active:scale-95"
+              className="press card flex w-full items-center gap-3 px-4 py-4 text-left"
             >
-              <span className="font-semibold capitalize">{t.name}</span>
-              <span className="flex items-center gap-1 font-mono text-xs text-zinc-500">
-                {t.exerciseIds.length} moves
-                <ChevronRight size={14} />
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                style={{
+                  background: `${program.accent}1f`,
+                  color: program.accent,
+                }}
+              >
+                <Dumbbell size={20} strokeWidth={2.4} />
               </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold capitalize">
+                  {t.name}
+                </span>
+                <span className="nums block text-[13px] text-ink-3">
+                  {t.exerciseIds.length} moves
+                  {(t.rounds ?? 1) > 1 ? ` · ${t.rounds} rounds` : ''}
+                  {t.sequence ? ' · rounds + extra' : ''}
+                </span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-ink-3" />
             </button>
           ))}
         </div>
@@ -132,64 +141,79 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
     (templates ?? []).filter((t) => t.program === p).length
 
   return (
-    <div className="pt-2">
+    <div className="pt-3">
       {(todaySessions?.length ?? 0) > 0 && (
-        <div className="mb-6">
+        <div className="mb-7">
           <Label>Resume today</Label>
-          {todaySessions?.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => onOpen(s.id)}
-              className="mt-2 flex w-full items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 transition active:scale-95"
-            >
-              <span className="font-semibold text-emerald-300 capitalize">
-                {nameFor(s.workoutId)}
-              </span>
-              <span className="font-mono text-xs text-emerald-400/80">
-                {counts?.[s.id] ?? 0} sets · continue →
-              </span>
-            </button>
-          ))}
+          <div className="mt-2.5 space-y-2">
+            {todaySessions?.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => onOpen(s.id)}
+                className="press flex w-full items-center justify-between rounded-2xl border border-[#37e29a]/30 bg-[#37e29a]/10 px-4 py-3.5"
+              >
+                <span className="font-semibold text-[#8ff0c6] capitalize">
+                  {nameFor(s.workoutId)}
+                </span>
+                <span className="nums flex items-center gap-1 text-[13px] font-medium text-[#37e29a]">
+                  {counts?.[s.id] ?? 0} sets <ChevronRight size={15} />
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       <Label>Choose a program</Label>
-      <div className="mt-2 space-y-2.5">
+      <div className="mt-2.5 space-y-2.5">
         {PROGRAMS.map((p) => (
           <button
             key={p.id}
-            onClick={() => setProgram(p.id)}
-            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-5 transition active:scale-95 ${p.accent}`}
+            onClick={() => setProgram({ id: p.id, accent: p.accent })}
+            className="press card flex w-full items-center gap-3.5 px-4 py-4 text-left"
           >
-            <span className="flex items-center gap-3">
-              <Dumbbell size={22} />
-              <span className="text-left">
-                <span className="block text-lg font-bold">{p.id}</span>
-                <span className="block text-xs opacity-70">{p.blurb}</span>
-              </span>
+            <span
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+              style={{
+                background: `linear-gradient(160deg, ${p.accent}33, ${p.accent}14)`,
+                color: p.accent,
+                boxShadow: `inset 0 0 0 1px ${p.accent}33`,
+              }}
+            >
+              <Dumbbell size={22} strokeWidth={2.4} />
             </span>
-            <span className="flex items-center gap-1 font-mono text-xs opacity-80">
-              {countFor(p.id)} workouts
-              <ChevronRight size={14} />
+            <span className="flex-1">
+              <span className="block text-lg font-bold tracking-tight">
+                {p.id}
+              </span>
+              <span className="block text-[13px] text-ink-3">{p.blurb}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="nums text-sm font-semibold text-ink-2">
+                {countFor(p.id)}
+              </span>
+              <ChevronRight size={18} className="text-ink-3" />
             </span>
           </button>
         ))}
       </div>
 
       {(recent?.length ?? 0) > 0 && (
-        <div className="mt-7">
+        <div className="mt-8">
           <Label>Recent sessions</Label>
-          <div className="mt-2 space-y-1.5">
-            {recent?.map((s) => (
+          <div className="mt-2.5 overflow-hidden rounded-2xl border border-hair">
+            {recent?.map((s, i) => (
               <button
                 key={s.id}
                 onClick={() => onOpen(s.id)}
-                className="flex w-full items-center justify-between rounded-xl bg-zinc-900/60 px-3.5 py-2.5 text-sm"
+                className={`flex w-full items-center justify-between bg-white/[0.02] px-4 py-3 text-sm active:bg-white/[0.05] ${
+                  i > 0 ? 'border-t border-hair' : ''
+                }`}
               >
-                <span className="text-zinc-300 capitalize">
+                <span className="font-medium text-ink-2 capitalize">
                   {nameFor(s.workoutId)}
                 </span>
-                <span className="font-mono text-xs text-zinc-500">
+                <span className="nums text-[13px] text-ink-3">
                   {fmtDate(s.date)} · {counts?.[s.id] ?? 0} sets
                 </span>
               </button>
@@ -199,27 +223,25 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
       )}
 
       {/* Bodyweight — feeds the effort colour coding (vest math, thresholds). */}
-      <div className="mt-7 flex items-center justify-between rounded-xl border border-zinc-800/70 bg-zinc-900/40 px-3.5 py-2.5">
-        <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
-          bodyweight
-        </span>
-        <span className="flex items-center gap-2">
+      <div className="mt-8 flex items-center justify-between rounded-2xl border border-hair bg-white/[0.02] px-4 py-3">
+        <span className="eyebrow">Bodyweight</span>
+        <span className="flex items-center gap-2.5">
           <button
             onClick={() => changeBw(-1)}
             aria-label="decrease bodyweight"
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-300 active:scale-95"
+            className="press flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-ink-2"
           >
-            <Minus size={14} />
+            <Minus size={15} strokeWidth={2.5} />
           </button>
-          <span className="w-16 text-center font-mono text-sm text-zinc-200">
+          <span className="nums w-16 text-center text-sm font-bold text-ink">
             {bw} kg
           </span>
           <button
             onClick={() => changeBw(1)}
             aria-label="increase bodyweight"
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-300 active:scale-95"
+            className="press flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-ink-2"
           >
-            <Plus size={14} />
+            <Plus size={15} strokeWidth={2.5} />
           </button>
         </span>
       </div>

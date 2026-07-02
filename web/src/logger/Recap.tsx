@@ -76,9 +76,7 @@ export function Recap({
 
   if (!data) {
     return (
-      <div className="mt-16 text-center font-mono text-sm text-zinc-500">
-        loading recap…
-      </div>
+      <div className="mt-16 text-center text-sm text-ink-3">Loading recap…</div>
     )
   }
 
@@ -92,44 +90,44 @@ export function Recap({
   }))
 
   const cellTone = (today: Cell | null, prev: Cell | null): string => {
-    if (!today) return 'text-zinc-600'
-    if (!prev) return 'text-zinc-200'
-    if (today.effort > prev.effort + 0.25) return 'text-emerald-400'
+    if (!today) return 'text-ink-3'
+    if (!prev) return 'text-ink'
+    if (today.effort > prev.effort + 0.25) return 'text-[#37e29a]'
     if (today.effort < prev.effort - 0.25) return 'text-rose-400'
-    return 'text-zinc-200'
+    return 'text-ink'
   }
 
   return (
-    <div className="px-4 pt-4 pb-24">
-      <div className="mb-4 flex items-center gap-3">
+    <div className="px-4 pt-5 pb-28">
+      <div className="mb-5 flex items-center gap-3">
         <button
           onClick={onBack}
           aria-label="back to session"
-          className="text-zinc-400"
+          className="press flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-ink-2"
         >
-          <ChevronLeft size={22} />
+          <ChevronLeft size={20} />
         </button>
         <div>
-          <h2 className="text-lg font-bold capitalize">{template.name} — recap</h2>
-          <p className="font-mono text-xs text-zinc-500">
-            today vs the previous {columns.length - 1} sessions
+          <h2 className="display text-xl capitalize">{template.name}</h2>
+          <p className="text-[13px] font-medium text-ink-3">
+            Today vs the previous {columns.length - 1} sessions
           </p>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/50">
-        <table className="w-full font-mono text-xs">
+      <div className="card overflow-x-auto p-0">
+        <table className="nums w-full text-xs">
           <thead>
-            <tr className="border-b border-zinc-800 text-zinc-500">
-              <th className="px-3 py-2 text-left font-normal">exercise</th>
+            <tr className="eyebrow border-b border-hair">
+              <th className="px-3 py-3 text-left font-semibold">Exercise</th>
               {columns.map((c, i) => (
                 <th
                   key={c.id}
-                  className={`px-2 py-2 text-right font-normal ${
-                    i === 0 ? 'text-emerald-300' : ''
+                  className={`px-2.5 py-3 text-right font-semibold ${
+                    i === 0 ? 'text-[#37e29a]' : ''
                   }`}
                 >
-                  {i === 0 ? 'today' : fmtDate(c.date)}
+                  {i === 0 ? 'Today' : fmtDate(c.date)}
                 </th>
               ))}
             </tr>
@@ -139,9 +137,9 @@ export function Recap({
               const cells = setsByCol.map((sets) => bestCell(sets, ex))
               if (cells.every((c) => !c)) return null
               return (
-                <tr key={ex.id} className="border-b border-zinc-800/50">
+                <tr key={ex.id} className="border-b border-hair/60">
                   <td
-                    className="max-w-[7.5rem] truncate px-3 py-1.5 text-zinc-400"
+                    className="max-w-[7.5rem] truncate px-3 py-2 font-medium text-ink-2"
                     title={ex.displayName ?? ex.name}
                   >
                     {ex.displayName ?? ex.name}
@@ -149,8 +147,8 @@ export function Recap({
                   {cells.map((c, i) => (
                     <td
                       key={i}
-                      className={`px-2 py-1.5 text-right whitespace-nowrap ${
-                        i === 0 ? cellTone(c, cells[1] ?? null) : 'text-zinc-400'
+                      className={`px-2.5 py-2 text-right font-semibold whitespace-nowrap ${
+                        i === 0 ? cellTone(c, cells[1] ?? null) : 'text-ink-3'
                       }`}
                     >
                       {c?.label ?? '—'}
@@ -163,18 +161,18 @@ export function Recap({
           <tfoot>
             {(
               [
-                ['sets', (t: (typeof totals)[0]) => t.sets],
-                ['reps', (t: (typeof totals)[0]) => t.reps],
-                ['kg', (t: (typeof totals)[0]) => t.ton],
+                ['Sets', (t: (typeof totals)[0]) => t.sets],
+                ['Reps', (t: (typeof totals)[0]) => t.reps],
+                ['Kg', (t: (typeof totals)[0]) => t.ton],
               ] as const
             ).map(([label, pick]) => (
-              <tr key={label} className="border-t border-zinc-800 text-zinc-500">
-                <td className="px-3 py-1.5">{label}</td>
+              <tr key={label} className="border-t border-hair text-ink-3">
+                <td className="px-3 py-2 font-semibold">{label}</td>
                 {totals.map((t, i) => (
                   <td
                     key={i}
-                    className={`px-2 py-1.5 text-right ${
-                      i === 0 ? 'text-zinc-200' : ''
+                    className={`px-2.5 py-2 text-right font-bold ${
+                      i === 0 ? 'text-ink' : ''
                     }`}
                   >
                     {pick(t)}
@@ -188,9 +186,9 @@ export function Recap({
 
       <button
         onClick={onExit}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 font-bold text-zinc-950 transition active:scale-95"
+        className="press mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#37e29a] py-3.5 text-[15px] font-bold text-[#04140d] shadow-[0_10px_28px_-10px_#37e29a99]"
       >
-        <HomeIcon size={18} /> Done
+        <HomeIcon size={18} strokeWidth={2.6} /> Done
       </button>
     </div>
   )

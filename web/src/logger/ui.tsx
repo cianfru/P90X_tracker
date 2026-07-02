@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { Minus, Plus } from 'lucide-react'
 
-/* Small presentational atoms shared across the logger, ported from the
- * workout-logger.jsx prototype (same look; typed, no behavioural change). */
+/* Small presentational atoms shared across the logger — sleek, tactile, no
+ * monospace. Numbers render with tabular figures for clean alignment. */
 
 export function Stepper({
   label,
@@ -22,33 +22,31 @@ export function Stepper({
   /** Overrides the value colour (used for live effort colour coding). */
   valueClass?: string
 }) {
-  const ring =
-    valueClass ?? (accent === 'sky' ? 'text-sky-400' : 'text-emerald-400')
+  const tint =
+    valueClass ?? (accent === 'sky' ? 'text-[#3bc6ff]' : 'text-[#37e29a]')
   const bump = (dir: number) => onChange(Math.max(min, value + dir * step))
   return (
     <div className="flex-1">
-      <div className="mb-1.5 font-mono text-xs tracking-wide text-zinc-500 uppercase">
-        {label}
-      </div>
-      <div className="flex items-center gap-2">
+      <div className="eyebrow mb-2 text-center">{label}</div>
+      <div className="flex items-center justify-between gap-2 rounded-2xl border border-hair bg-black/25 p-1.5">
         <button
           type="button"
           aria-label={`decrease ${label}`}
           onClick={() => bump(-1)}
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-800 transition active:scale-95"
+          className="press flex h-11 w-11 items-center justify-center rounded-xl bg-white/5 text-ink-2 active:bg-white/10"
         >
-          <Minus size={18} />
+          <Minus size={18} strokeWidth={2.5} />
         </button>
-        <div className={`flex-1 text-center font-mono text-2xl font-bold ${ring}`}>
+        <div className={`nums flex-1 text-center text-3xl font-bold ${tint}`}>
           {value}
         </div>
         <button
           type="button"
           aria-label={`increase ${label}`}
           onClick={() => bump(1)}
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-800 transition active:scale-95"
+          className="press flex h-11 w-11 items-center justify-center rounded-xl bg-white/5 text-ink-2 active:bg-white/10"
         >
-          <Plus size={18} />
+          <Plus size={18} strokeWidth={2.5} />
         </button>
       </div>
     </div>
@@ -69,9 +67,9 @@ export function Chip({
   children: ReactNode
 }) {
   const tones: Record<typeof tone, string> = {
-    amber: 'bg-amber-500/20 border-amber-500/50 text-amber-300',
-    sky: 'bg-sky-500/20 border-sky-500/50 text-sky-300',
-    rose: 'bg-rose-500/20 border-rose-500/50 text-rose-300',
+    amber: 'border-amber-400/50 bg-amber-400/15 text-amber-300',
+    sky: 'border-sky-400/50 bg-sky-400/15 text-sky-300',
+    rose: 'border-rose-400/50 bg-rose-400/15 text-rose-300',
   }
   return (
     <button
@@ -79,8 +77,8 @@ export function Chip({
       onClick={onClick}
       title={title}
       aria-pressed={active}
-      className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
-        active ? tones[tone] : 'border-zinc-700 bg-zinc-800/60 text-zinc-400'
+      className={`press rounded-full border px-3 py-1.5 text-xs font-semibold ${
+        active ? tones[tone] : 'border-hair bg-white/[0.04] text-ink-3'
       }`}
     >
       {children}
@@ -91,16 +89,12 @@ export function Chip({
 export function Stat({ n, label }: { n: number; label: string }) {
   return (
     <div className="text-center">
-      <div className="font-semibold text-zinc-200">{n}</div>
-      <div className="-mt-0.5 text-xs text-zinc-500">{label}</div>
+      <div className="nums text-base font-bold text-ink">{n}</div>
+      <div className="-mt-0.5 text-[11px] font-medium text-ink-3">{label}</div>
     </div>
   )
 }
 
 export function Label({ children }: { children: ReactNode }) {
-  return (
-    <div className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
-      {children}
-    </div>
-  )
+  return <div className="eyebrow">{children}</div>
 }

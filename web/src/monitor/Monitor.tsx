@@ -32,14 +32,14 @@ const C = {
   amber: '#fbbf24',
   rose: '#fb7185',
   violet: '#a78bfa',
-  grid: 'rgba(255,255,255,.06)',
-  mut: '#8a97ab',
+  grid: 'rgba(255,255,255,.08)',
+  mut: '#aab3c2',
 }
 
 const tip = {
   contentStyle: {
-    background: '#18181b',
-    border: '1px solid #3f3f46',
+    background: '#14161d',
+    border: '1px solid rgba(255,255,255,0.14)',
     borderRadius: 12,
     fontSize: 12,
   },
@@ -138,14 +138,14 @@ export function Monitor() {
 
   if (!a) {
     return (
-      <div className="mt-16 text-center font-mono text-sm text-zinc-500">
-        loading analytics…
+      <div className="mt-16 text-center text-sm text-ink-3">
+        Loading analytics…
       </div>
     )
   }
   if (!logged.length) {
     return (
-      <div className="mt-16 text-center text-sm text-zinc-500">
+      <div className="mt-16 text-center text-sm text-ink-3">
         <Activity className="mx-auto mb-3 opacity-40" />
         No data yet — log a few sets and your trends show up here.
       </div>
@@ -160,7 +160,7 @@ export function Monitor() {
   return (
     <div className="space-y-4 pt-2">
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid auto-rows-fr grid-cols-3 gap-2">
         <Kpi label="sessions" value={a.kpis.sessions.toLocaleString()} tone="ink" />
         <Kpi
           label="bodyweight reps"
@@ -191,8 +191,8 @@ export function Monitor() {
         >
           <Suspense
             fallback={
-              <div className="py-12 text-center font-mono text-xs text-zinc-500">
-                loading map…
+              <div className="py-12 text-center text-xs text-ink-3">
+                Loading map…
               </div>
             }
           >
@@ -214,9 +214,9 @@ export function Monitor() {
             <div className="text-right">
               <div className="flex items-center justify-end gap-1 text-amber-400">
                 <Trophy size={13} />
-                <span className="font-mono font-bold">{pr}</span>
+                <span className="font-bold">{pr}</span>
               </div>
-              <div className="font-mono text-xs text-zinc-500">PR</div>
+              <div className="text-xs text-ink-3">PR</div>
             </div>
           ) : null
         }
@@ -228,8 +228,8 @@ export function Monitor() {
               onClick={() => setExId(e.id)}
               className={`rounded-full border px-3 py-1.5 text-xs whitespace-nowrap transition ${
                 selected?.id === e.id
-                  ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
-                  : 'border-zinc-800 bg-zinc-900 text-zinc-400'
+                  ? 'border-[#37e29a]/40 bg-[#37e29a]/20 text-[#37e29a]'
+                  : 'border-hair bg-white/[0.04] text-ink-3'
               }`}
             >
               {e.displayName ?? e.name}
@@ -385,14 +385,14 @@ export function Monitor() {
                   key={s}
                   className="grid grid-cols-[5rem_1fr_4rem] items-center gap-2.5 text-sm"
                 >
-                  <span className="text-zinc-300 capitalize">{s}</span>
+                  <span className="text-ink-2 capitalize">{s}</span>
                   <span className="h-2 overflow-hidden rounded bg-white/5">
                     <span
                       className="block h-full rounded bg-emerald-400"
                       style={{ width: `${pct}%` }}
                     />
                   </span>
-                  <span className="text-right font-mono text-xs text-zinc-400">
+                  <span className="text-right text-xs text-ink-3">
                     {n} · {pct}%
                   </span>
                 </div>
@@ -476,7 +476,7 @@ export function Monitor() {
                 className="grid grid-cols-[7rem_1fr_3.5rem] items-center gap-2.5 text-sm"
               >
                 <span
-                  className="truncate text-zinc-300"
+                  className="truncate text-ink-2"
                   title={`${m.name} · ${m.first}→${m.last} ${m.metric === 'weight' ? 'kg' : 'reps'}`}
                 >
                   {m.name}
@@ -491,7 +491,7 @@ export function Monitor() {
                   />
                 </span>
                 <span
-                  className={`text-right font-mono text-xs ${pos ? 'text-emerald-400' : 'text-rose-400'}`}
+                  className={`text-right text-xs ${pos ? 'text-emerald-400' : 'text-rose-400'}`}
                 >
                   {pos ? '+' : ''}
                   {m.pct}%
@@ -508,14 +508,14 @@ export function Monitor() {
           {a.routines.map((r) => (
             <div
               key={r.id}
-              className="rounded-xl border border-zinc-800 bg-white/[0.015] px-3 py-2.5"
+              className="rounded-xl border border-hair bg-white/[0.02] px-3 py-2.5"
             >
               <div className="text-sm font-semibold capitalize">
                 {nameFor(r.id)}
               </div>
-              <div className="mt-1 font-mono text-lg font-bold text-sky-400">
+              <div className="mt-1 text-lg font-bold text-sky-400">
                 {r.sessions}
-                <span className="text-xs font-normal text-zinc-500"> sessions</span>
+                <span className="text-xs font-normal text-ink-3"> sessions</span>
               </div>
             </div>
           ))}
@@ -537,21 +537,21 @@ function Kpi({
   tone: 'ink' | 'emerald' | 'sky' | 'amber' | 'violet' | 'rose'
 }) {
   const colors = {
-    ink: 'text-zinc-100',
-    emerald: 'text-emerald-400',
+    ink: 'text-ink',
+    emerald: 'text-[#37e29a]',
     sky: 'text-sky-400',
     amber: 'text-amber-400',
     violet: 'text-violet-400',
     rose: 'text-rose-400',
   }
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-3 py-2.5">
-      <div className="font-mono text-[10px] tracking-wider text-zinc-500 uppercase">
-        {label}
-      </div>
-      <div className={`mt-1 font-mono text-lg font-bold ${colors[tone]}`}>
+    <div className="card px-3.5 py-3">
+      <div className="eyebrow text-[10px]">{label}</div>
+      <div
+        className={`nums mt-1 text-lg font-bold whitespace-nowrap ${colors[tone]}`}
+      >
         {value}
-        {unit && <span className="text-xs font-normal text-zinc-500"> {unit}</span>}
+        {unit && <span className="text-xs font-medium text-ink-3"> {unit}</span>}
       </div>
     </div>
   )
@@ -569,11 +569,11 @@ function Card({
   children: React.ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-      <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="card p-4">
+      <div className="mb-3.5 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-xs text-zinc-500">{subtitle}</p>}
+          <h3 className="text-[15px] font-bold tracking-tight">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-[13px] text-ink-3">{subtitle}</p>}
         </div>
         {right}
       </div>

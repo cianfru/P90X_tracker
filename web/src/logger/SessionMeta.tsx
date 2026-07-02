@@ -78,49 +78,47 @@ export function SessionMeta({ session }: { session: Session }) {
   const hasSummary = summary(session).length > 0
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50">
+    <div className="overflow-hidden rounded-2xl border border-hair bg-white/[0.02]">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2.5 px-4 py-3 text-left"
+        className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left"
       >
         <MapPin size={16} className="shrink-0 text-sky-400" />
         <span className="flex-1 truncate text-sm">
           {hasSummary ? (
-            <span className="text-zinc-300">{summary(session)}</span>
+            <span className="font-medium text-ink-2">{summary(session)}</span>
           ) : (
-            <span className="text-zinc-500">Add location, form, notes…</span>
+            <span className="text-ink-3">Add location, form, notes…</span>
           )}
         </span>
         <ChevronDown
           size={16}
-          className={`shrink-0 text-zinc-500 transition ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-ink-3 transition ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
-        <div className="space-y-4 border-t border-zinc-800/70 px-4 pt-3 pb-4">
+        <div className="space-y-5 border-t border-hair px-4 pt-4 pb-4">
           {/* Location */}
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
-                location
-              </span>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="eyebrow">Location</span>
               <button
                 onClick={useMyLocation}
                 disabled={geo === 'locating'}
-                className="flex items-center gap-1 font-mono text-xs text-sky-400 active:text-sky-300 disabled:opacity-50"
+                className="flex items-center gap-1 text-xs font-semibold text-sky-400 active:text-sky-300 disabled:opacity-50"
               >
                 <LocateFixed
-                  size={12}
+                  size={13}
                   className={geo === 'locating' ? 'animate-pulse' : ''}
                 />
                 {geo === 'locating'
-                  ? 'locating…'
+                  ? 'Locating…'
                   : geo === 'denied'
-                    ? 'permission denied'
+                    ? 'Permission denied'
                     : geo === 'unavailable'
-                      ? 'unavailable'
-                      : 'use my location'}
+                      ? 'Unavailable'
+                      : 'Use my location'}
               </button>
             </div>
             <input
@@ -128,10 +126,10 @@ export function SessionMeta({ session }: { session: Session }) {
               onChange={(e) => setLocation(e.target.value)}
               onBlur={(e) => commitLocation(e.target.value)}
               placeholder="City, IATA code, or casa…"
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-950/60 px-3 py-2.5 text-sm outline-none focus:border-sky-500/60"
+              className="w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none transition focus:border-sky-400/60"
             />
             {recent.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {recent.map((loc) => (
                   <button
                     key={loc}
@@ -139,10 +137,10 @@ export function SessionMeta({ session }: { session: Session }) {
                       setLocation(loc)
                       commitLocation(loc)
                     }}
-                    className={`rounded-lg border px-2.5 py-1 text-xs transition ${
+                    className={`press rounded-full border px-3 py-1 text-xs font-medium ${
                       location === loc
-                        ? 'border-sky-500/50 bg-sky-500/20 text-sky-300'
-                        : 'border-zinc-700 bg-zinc-800/60 text-zinc-400'
+                        ? 'border-sky-400/50 bg-sky-400/15 text-sky-300'
+                        : 'border-hair bg-white/[0.04] text-ink-3'
                     }`}
                   >
                     {loc}
@@ -154,18 +152,16 @@ export function SessionMeta({ session }: { session: Session }) {
 
           {/* Form 1-10 */}
           <div>
-            <div className="mb-1.5 font-mono text-xs tracking-wide text-zinc-500 uppercase">
-              form (1–10)
-            </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="eyebrow mb-2">Form · 1–10</div>
+            <div className="grid grid-cols-10 gap-1.5">
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                 <button
                   key={n}
                   onClick={() => setForm(form === n ? null : n)}
-                  className={`h-9 w-9 rounded-lg border text-sm font-semibold transition ${
+                  className={`nums press flex aspect-square items-center justify-center rounded-xl border text-sm font-bold ${
                     form === n
-                      ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-300'
-                      : 'border-zinc-700 bg-zinc-800/60 text-zinc-400'
+                      ? 'border-[#37e29a]/60 bg-[#37e29a]/20 text-[#37e29a]'
+                      : 'border-hair bg-white/[0.04] text-ink-3'
                   }`}
                 >
                   {n}
@@ -176,9 +172,7 @@ export function SessionMeta({ session }: { session: Session }) {
 
           {/* Supplements */}
           <div>
-            <div className="mb-1.5 font-mono text-xs tracking-wide text-zinc-500 uppercase">
-              supplements
-            </div>
+            <div className="eyebrow mb-2">Supplements</div>
             <div className="flex flex-wrap gap-1.5">
               {SUPPLEMENTS.map((s) => (
                 <Chip
@@ -195,16 +189,14 @@ export function SessionMeta({ session }: { session: Session }) {
 
           {/* Notes */}
           <div>
-            <div className="mb-1.5 font-mono text-xs tracking-wide text-zinc-500 uppercase">
-              notes
-            </div>
+            <div className="eyebrow mb-2">Notes</div>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               onBlur={(e) => commitNotes(e.target.value)}
               rows={2}
               placeholder="Caldo, stanco, dolore schiena…"
-              className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-950/60 px-3 py-2.5 text-sm outline-none focus:border-sky-500/60"
+              className="w-full resize-none rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none transition focus:border-sky-400/60"
             />
           </div>
         </div>
