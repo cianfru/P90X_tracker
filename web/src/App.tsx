@@ -1,17 +1,22 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import {
+  Cloud,
   Dumbbell,
   Loader2,
   RefreshCw,
   TrendingUp,
+  UserRound,
   WifiOff,
   Wifi,
 } from 'lucide-react'
 import { useOnlineStatus } from './lib/useOnlineStatus'
 import { ensureSeeded, needsHistorySeed, seedHistory, seedHistoryMeta } from './db'
 import { useSync } from './sync/useSync'
+import { cachedAccount, googleActive } from './sync/googleAuth'
+import { useGoogleSync } from './sync/useGoogleSync'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
+import { Account } from './logger/Account'
 
 // Charts (Recharts) are heavy — load them only when the Monitor is opened so the
 // gym-side logger stays lightweight.
@@ -31,8 +36,12 @@ export default function App() {
   const [view, setView] = useState<View>('home')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [importPct, setImportPct] = useState<number | null>(null)
+  const [showAccount, setShowAccount] = useState(false)
+  const [, bumpAccount] = useState(0)
   const online = useOnlineStatus()
-  const syncState = useSync()
+  const gActive = googleActive()
+  const syncState = useSync() // no-ops while Google is the active backend
+  const gSync = useGoogleSync(gActive)
 
   useEffect(() => {
     void (async () => {
@@ -52,6 +61,15 @@ export default function App() {
       }
     })()
   }, [])
+
+  if (showAccount) {
+    return (
+      <Account
+        onBack={() => setShowAccount(false)}
+        onChange={() => bumpAccount((n) => n + 1)}
+      />
+    )
+  }
 
   if (sessionId) {
     return (
@@ -74,7 +92,8 @@ export default function App() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {syncState.enabled &&
+          {!gActive &&
+            syncState.enabled &&
             importPct === null &&
             (syncState.syncing || syncState.pending > 0) && (
               <span
@@ -97,9 +116,40 @@ export default function App() {
               <Loader2 size={13} className="animate-spin" />
               {importPct}%
             </span>
+          ) : gActive ? (
+            <span
+              className="flex items-center gap-1.5 rounded-full border border-[#34f5a0]/30 bg-[#34f5a0]/10 px-3 py-1.5 text-xs font-semibold text-[#34f5a0]"
+              title={
+                gSync.pending > 0
+                  ? `${gSync.pending} change(s) pending backup`
+                  : 'Backed up to Google Sheets'
+              }
+            >
+              <Cloud
+                size={13}
+                className={gSync.syncing ? 'animate-pulse' : ''}
+              />
+              {gSync.pending > 0 ? gSync.pending : 'Synced'}
+            </span>
           ) : (
             <ConnPill online={online} />
           )}
+          <button
+            onClick={() => setShowAccount(true)}
+            aria-label="account"
+            className="press flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-hair bg-white/[0.04] text-ink-2"
+          >
+            {cachedAccount()?.picture ? (
+              <img
+                src={cachedAccount()!.picture}
+                alt=""
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <UserRound size={17} />
+            )}
+          </button>
         </div>
       </header>
 
