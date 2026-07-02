@@ -7,6 +7,7 @@ import {
   useMap,
 } from 'react-leaflet'
 import { LatLngBounds } from 'leaflet'
+import { ChevronRight } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
 import type { Session, WorkoutTemplate } from '../db'
 import { fmtDate } from '../lib/id'
@@ -33,6 +34,7 @@ const TILE_ATTRIB =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
 
 interface PlaceSession {
+  id: string
   date: string
   workout: string
   score: number
@@ -71,6 +73,7 @@ function aggregate(
       by.set(r.key, p)
     }
     p.sessions.push({
+      id: s.id,
       date: s.date,
       workout: nameFor(s.workoutId),
       score: intensity.get(s.id)?.score ?? 50,
@@ -99,10 +102,12 @@ export function TravelMap({
   sessions,
   templates,
   intensity,
+  onOpenSession,
 }: {
   sessions: Session[]
   templates: WorkoutTemplate[]
   intensity: Map<string, Intensity>
+  onOpenSession?: (sessionId: string, score: number) => void
 }) {
   const nameFor = useMemo(() => {
     const m = new Map(templates.map((t) => [t.id, t.name]))
@@ -214,32 +219,34 @@ export function TravelMap({
                 clear
               </button>
             </div>
-            <div className="max-h-64 overflow-y-auto">
-              {place.sessions.map((s, i) => {
+            <div className="max-h-80 overflow-y-auto">
+              {place.sessions.map((s) => {
                 const color = intensityColor(s.score)
                 return (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2.5 border-b border-hair/50 px-3 py-1.5 text-sm last:border-0"
+                  <button
+                    key={s.id}
+                    onClick={() => onOpenSession?.(s.id, s.score)}
+                    className="flex w-full items-center gap-2.5 border-b border-hair/50 px-3 py-2.5 text-left text-sm last:border-0 active:bg-white/[0.04]"
                   >
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ background: color }}
                       title={intensityLabel(s.score)}
                     />
-                    <span className="w-20 shrink-0 text-xs text-ink-3">
+                    <span className="nums w-20 shrink-0 text-xs text-ink-3">
                       {fmtDate(s.date)}
                     </span>
                     <span className="flex-1 truncate capitalize text-ink-2">
                       {s.workout}
                     </span>
                     <span
-                      className="text-xs font-semibold"
+                      className="nums text-xs font-bold"
                       style={{ color }}
                     >
                       {s.score}
                     </span>
-                  </div>
+                    <ChevronRight size={14} className="shrink-0 text-ink-3" />
+                  </button>
                 )
               })}
             </div>

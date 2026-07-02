@@ -18,6 +18,14 @@ export function fmtDate(iso: string): string {
   })
 }
 
+/** Local start time (HH:MM) from a ms timestamp — when a workout began. */
+export function fmtTime(ms: number): string {
+  return new Date(ms).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 /** Stable per-device id (used to tag sessions; survives reloads). */
 export function getDeviceId(): string {
   const KEY = 'p90x-device-id'
