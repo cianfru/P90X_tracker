@@ -20,14 +20,14 @@ import { Label } from './ui'
  * Home — two steps: first pick a program (P90X / P90X2 / P90X3 / Body Beast),
  * then pick a workout from that program. Resume-today and recent sessions
  * (which span all programs) stay on the program screen as shortcuts. Programs
- * with no workouts yet (Body Beast) show a "coming soon" slot. All reads live.
+ * with no workouts yet show a "no workouts" slot. All reads live.
  */
 
 const PROGRAMS: { id: Program; blurb: string }[] = [
   { id: 'P90X', blurb: 'Classic resistance block' },
   { id: 'P90X2', blurb: 'X2 stability & power' },
   { id: 'P90X3', blurb: '30-minute resistance' },
-  { id: 'Body Beast', blurb: 'Coming soon' },
+  { id: 'Body Beast', blurb: 'Hypertrophy — build & bulk' },
 ]
 
 export function Home({
