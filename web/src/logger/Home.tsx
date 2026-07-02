@@ -1,17 +1,34 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react'
 import { db } from '../db'
+import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
 import { fmtDate, todayISO } from '../lib/id'
 import { Label } from './ui'
 
 /*
- * Home — pick a workout template (exercises in performed order), resume today's
- * session, or glance at recent sessions. Everything reads live from Dexie.
+ * Home — two steps: first pick a program (P90X or P90X2), then pick a workout
+ * from that program. Resume-today and recent sessions (which span both
+ * programs) stay on the program screen as shortcuts. All reads are live.
  */
+
+const PROGRAMS: { id: Program; blurb: string; accent: string }[] = [
+  {
+    id: 'P90X',
+    blurb: 'Classic resistance block',
+    accent: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+  },
+  {
+    id: 'P90X2',
+    blurb: 'X2 stability & power block',
+    accent: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+  },
+]
 
 export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
   const templates = useLiveQuery(() => db.templates.orderBy('name').toArray())
+  const [program, setProgram] = useState<Program | null>(null)
   const today = todayISO()
 
   const todaySessions = useLiveQuery(
@@ -21,7 +38,6 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
   const recent = useLiveQuery(() =>
     db.sessions.orderBy('createdAt').reverse().limit(5).toArray(),
   )
-  // Non-deleted set counts per session, for the little "N sets" badges.
   const counts = useLiveQuery(async () => {
     const ids = [
       ...new Set([
@@ -45,6 +61,41 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
     onOpen(await startOrResumeSession(workoutId))
   }
 
+  // ---- Step 2: workouts within the chosen program ----
+  if (program) {
+    const workouts = (templates ?? []).filter((t) => t.program === program)
+    return (
+      <div className="pt-2">
+        <button
+          onClick={() => setProgram(null)}
+          className="mb-4 flex items-center gap-1.5 font-mono text-sm text-zinc-400 active:text-zinc-200"
+        >
+          <ChevronLeft size={18} /> programs
+        </button>
+        <Label>{program} · start a workout</Label>
+        <div className="mt-2 space-y-2.5">
+          {workouts.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => start(t.id)}
+              className="flex w-full items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-4 transition hover:border-zinc-700 active:scale-95"
+            >
+              <span className="font-semibold capitalize">{t.name}</span>
+              <span className="flex items-center gap-1 font-mono text-xs text-zinc-500">
+                {t.exerciseIds.length} moves
+                <ChevronRight size={14} />
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ---- Step 1: choose a program (+ resume / recent shortcuts) ----
+  const countFor = (p: Program) =>
+    (templates ?? []).filter((t) => t.program === p).length
+
   return (
     <div className="pt-2">
       {(todaySessions?.length ?? 0) > 0 && (
@@ -67,17 +118,23 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
         </div>
       )}
 
-      <Label>Start a workout</Label>
+      <Label>Choose a program</Label>
       <div className="mt-2 space-y-2.5">
-        {templates?.map((t) => (
+        {PROGRAMS.map((p) => (
           <button
-            key={t.id}
-            onClick={() => start(t.id)}
-            className="flex w-full items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-4 transition hover:border-zinc-700 active:scale-95"
+            key={p.id}
+            onClick={() => setProgram(p.id)}
+            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-5 transition active:scale-95 ${p.accent}`}
           >
-            <span className="font-semibold capitalize">{t.name}</span>
-            <span className="flex items-center gap-1 font-mono text-xs text-zinc-500">
-              {t.exerciseIds.length} moves
+            <span className="flex items-center gap-3">
+              <Dumbbell size={22} />
+              <span className="text-left">
+                <span className="block text-lg font-bold">{p.id}</span>
+                <span className="block text-xs opacity-70">{p.blurb}</span>
+              </span>
+            </span>
+            <span className="flex items-center gap-1 font-mono text-xs opacity-80">
+              {countFor(p.id)} workouts
               <ChevronRight size={14} />
             </span>
           </button>

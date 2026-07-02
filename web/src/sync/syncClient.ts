@@ -106,7 +106,9 @@ const wireToSet = (w: WireSet): WorkoutSet => ({
 async function push(cfg: SyncConfig): Promise<void> {
   const entries = await db.outbox.toArray()
   if (!entries.length) return
-  const sessionIds = entries.filter((e) => e.table === 'sessions').map((e) => e.rowId)
+  const sessionIds = entries
+    .filter((e) => e.table === 'sessions')
+    .map((e) => e.rowId)
   const setIds = entries.filter((e) => e.table === 'sets').map((e) => e.rowId)
   const sessions = (await db.sessions.bulkGet(sessionIds))
     .filter((s): s is Session => Boolean(s))
