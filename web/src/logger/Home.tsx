@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, Dumbbell, Minus, Plus } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Dumbbell,
+  Minus,
+  Plus,
+  Sparkles,
+} from 'lucide-react'
 import { db } from '../db'
 import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
@@ -23,7 +30,13 @@ const PROGRAMS: { id: Program; blurb: string }[] = [
   { id: 'Body Beast', blurb: 'Coming soon' },
 ]
 
-export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
+export function Home({
+  onOpen,
+  onMix,
+}: {
+  onOpen: (sessionId: string) => void
+  onMix: () => void
+}) {
   const templates = useLiveQuery(() => db.templates.orderBy('name').toArray())
   const [programId, setProgramId] = useState<Program | null>(null)
   const program = programId
@@ -165,6 +178,25 @@ export function Home({ onOpen }: { onOpen: (sessionId: string) => void }) {
           </div>
         </div>
       )}
+
+      {/* Mixer — auto-generated variety, paced by a video you know. */}
+      <button
+        onClick={onMix}
+        className="press mb-6 flex w-full items-center gap-3.5 rounded-2xl border border-[#ff5cc8]/30 bg-[#ff5cc8]/10 px-4 py-4 text-left"
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#ff5cc8]/20 text-[#ff5cc8]">
+          <Sparkles size={22} />
+        </span>
+        <span className="flex-1">
+          <span className="block text-lg font-bold text-[#ffa9e4]">
+            Mix a workout
+          </span>
+          <span className="block text-[13px] text-ink-3">
+            Fresh moves for variety, paced by a video you know
+          </span>
+        </span>
+        <ChevronRight size={18} className="text-[#ff5cc8]" />
+      </button>
 
       <Label>Choose a program</Label>
       <div className="mt-2.5 space-y-2.5">

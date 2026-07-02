@@ -182,6 +182,7 @@ export function Session({
             exercise={ex}
             sessionId={sessionId}
             accent={accent}
+            target={template?.targets?.[ex.id]}
             isOpen={open === ex.id}
             onToggle={() => setOpen(open === ex.id ? null : ex.id)}
             onLogged={handleLogged}

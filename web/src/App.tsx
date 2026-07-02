@@ -18,6 +18,7 @@ import { useGoogleSync } from './sync/useGoogleSync'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
 import { Account } from './logger/Account'
+import { Mixer } from './logger/Mixer'
 
 // Charts (Recharts) are heavy — load them only when the Monitor is opened so the
 // gym-side logger stays lightweight.
@@ -38,6 +39,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [importPct, setImportPct] = useState<number | null>(null)
   const [showAccount, setShowAccount] = useState(false)
+  const [showMixer, setShowMixer] = useState(false)
   const [, bumpAccount] = useState(0)
   const online = useOnlineStatus()
   const gActive = googleActive()
@@ -69,6 +71,18 @@ export default function App() {
       <Account
         onBack={() => setShowAccount(false)}
         onChange={() => bumpAccount((n) => n + 1)}
+      />
+    )
+  }
+
+  if (showMixer) {
+    return (
+      <Mixer
+        onBack={() => setShowMixer(false)}
+        onStart={(id) => {
+          setShowMixer(false)
+          setSessionId(id)
+        }}
       />
     )
   }
@@ -157,7 +171,7 @@ export default function App() {
 
       <main className="flex-1 px-4 pb-32">
         {view === 'home' ? (
-          <Home onOpen={setSessionId} />
+          <Home onOpen={setSessionId} onMix={() => setShowMixer(true)} />
         ) : (
           <Suspense
             fallback={

@@ -36,6 +36,7 @@ export function ExerciseCard({
   exercise,
   sessionId,
   accent,
+  target,
   isOpen,
   onToggle,
   onLogged,
@@ -43,6 +44,8 @@ export function ExerciseCard({
   exercise: Exercise
   sessionId: string
   accent: string
+  /** Mixer pre-fill target (reps/weight) — overrides the history default. */
+  target?: { reps?: number; weightKg?: number }
   isOpen: boolean
   onToggle: () => void
   onLogged?: (exerciseId: string) => void
@@ -67,13 +70,19 @@ export function ExerciseCard({
   const touched = useRef(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // Pre-fill from the recent standard average (the "target"), until adjusted.
+  // Pre-fill: a Mixer target wins; otherwise the recent standard average.
   useEffect(() => {
-    if (stats && !touched.current) {
+    if (touched.current) return
+    if (target) {
+      if (target.reps != null) setReps(target.reps)
+      if (weighted && target.weightKg != null) setWeight(target.weightKg)
+      return
+    }
+    if (stats) {
       if (stats.targetReps != null) setReps(stats.targetReps)
       if (weighted && stats.targetWeightKg != null) setWeight(stats.targetWeightKg)
     }
-  }, [stats, weighted])
+  }, [stats, weighted, target])
 
   // Log-&-next opens the next card programmatically — bring it into view.
   useEffect(() => {
