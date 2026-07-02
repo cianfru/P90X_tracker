@@ -13,12 +13,20 @@ CREATE TABLE IF NOT EXISTS sessions (
   workout_id  TEXT        NOT NULL,
   device_id   TEXT        NOT NULL,
   created_at  BIGINT      NOT NULL,               -- client timestamp (ms)
+  location    TEXT,                                -- where trained (city / IATA / "casa")
+  form        REAL,                                -- self-assessed readiness 1-10
+  notes       TEXT,                                -- free-text day notes
+  supplements JSONB       NOT NULL DEFAULT '[]',   -- typed: creatine/protein/maca
   deleted     BOOLEAN     NOT NULL DEFAULT FALSE,  -- soft-delete (wrong routine)
   seq         BIGINT      NOT NULL DEFAULT nextval('sync_seq')
 );
 CREATE INDEX IF NOT EXISTS sessions_seq_idx ON sessions (seq);
--- Migration for databases created before sessions.deleted existed.
+-- Migrations for databases created before these columns existed.
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS form REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS supplements JSONB NOT NULL DEFAULT '[]';
 
 CREATE TABLE IF NOT EXISTS sets (
   id          UUID PRIMARY KEY,

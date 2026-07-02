@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Modifier, Session, WorkoutSet } from './types'
+import type { Modifier, Session, Supplement, WorkoutSet } from './types'
 
 /*
  * One-time history import: seed 7 years (~791 sessions / 18,841 sets) from the
@@ -13,6 +13,7 @@ import type { Modifier, Session, WorkoutSet } from './types'
  */
 
 const FLAG = 'p90x-history-seeded'
+const META_FLAG = 'p90x-history-meta-seeded'
 const IMPORT_DEVICE = 'import'
 const CHUNK = 3000
 
@@ -30,6 +31,18 @@ interface RawSession {
   date: string
   workoutId: string
   sets: RawSet[]
+  location?: string
+  form?: number
+  notes?: string
+  supplements?: Supplement[]
+}
+
+/** Copy present metadata fields from a raw history row onto a Session. */
+function applyMeta(target: Partial<Session>, raw: RawSession): void {
+  if (raw.location) target.location = raw.location
+  if (raw.form != null) target.form = raw.form
+  if (raw.notes) target.notes = raw.notes
+  if (raw.supplements?.length) target.supplements = raw.supplements
 }
 
 /** True on a fresh install, or after an interrupted import with no user data yet. */
@@ -62,13 +75,15 @@ export async function seedHistory(
   for (const s of raw) {
     // Date-derived timestamps so sets order chronologically (prefill = latest).
     const base = new Date(`${s.date}T12:00:00`).getTime()
-    sessions.push({
+    const session: Session = {
       id: s.id,
       date: s.date,
       workoutId: s.workoutId,
       deviceId: IMPORT_DEVICE,
       createdAt: base,
-    })
+    }
+    applyMeta(session, s)
+    sessions.push(session)
     s.sets.forEach((st, i) => {
       sets.push({
         id: st.id,
@@ -92,5 +107,38 @@ export async function seedHistory(
   }
 
   localStorage.setItem(FLAG, '1')
+  localStorage.setItem(META_FLAG, '1') // fresh seed already carries metadata
   return sessions.length
+}
+
+/**
+ * One-time backfill of session metadata (location / form / notes / supplements)
+ * onto installs that imported history BEFORE these fields existed. Matches the
+ * bundled history.json rows to existing import sessions by their stable UUID and
+ * patches only the metadata — user-logged sessions (different ids) are untouched.
+ */
+export async function seedHistoryMeta(): Promise<number> {
+  if (localStorage.getItem(META_FLAG)) return 0
+  if (!localStorage.getItem(FLAG)) return 0 // no prior import to backfill
+
+  const res = await fetch(`${import.meta.env.BASE_URL}history.json`)
+  if (!res.ok) throw new Error(`history fetch failed: ${res.status}`)
+  const raw = (await res.json()) as RawSession[]
+
+  let patched = 0
+  await db.transaction('rw', db.sessions, async () => {
+    for (const s of raw) {
+      const meta: Partial<Session> = {}
+      applyMeta(meta, s)
+      if (Object.keys(meta).length === 0) continue
+      const existing = await db.sessions.get(s.id)
+      if (existing && existing.deviceId === IMPORT_DEVICE) {
+        await db.sessions.update(s.id, meta)
+        patched++
+      }
+    }
+  })
+
+  localStorage.setItem(META_FLAG, '1')
+  return patched
 }

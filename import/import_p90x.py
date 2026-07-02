@@ -60,6 +60,66 @@ def parse_date(v):
 
 def rxw(s): return re.search(r"(\d+)\s*x\s*(\d+)", s.lower())
 
+# --- Per-day session metadata (Location / Form / notes / supplements) -----------
+# The sheet carries, below the exercise block, a labelled "Location" row, a
+# labelled "Form" row (self-assessed 1-10, Italian decimals like "6,5"), and a
+# few UNLABELLED annotation rows mixing supplement shorthand (Cp/C/P) with free
+# notes (Caldo, Stanco, Anavar…). Captured here as session metadata, typed where
+# possible (see /CLAUDE.md → Data model).
+
+def parse_form(v):
+    """Self-assessed form 1-10; accepts int/float or 'x,y' Italian decimals."""
+    if v is None: return None
+    if isinstance(v, bool): return None
+    if isinstance(v, (int, float)):
+        f = float(v)
+    else:
+        s = str(v).strip().replace(",", ".")
+        if not re.fullmatch(r"\d+(\.\d+)?", s): return None
+        f = float(s)
+    return f if 1 <= f <= 10 else None
+
+# Supplement shorthand: the owner writes letters for what he took —
+# c=creatine, p=protein, m=maca — as letter-sets (`Cp`, `Cpm`, `CPM`),
+# slash/space-separated (`C/P/M`, `Cr/pr`), or spelled out. A cell can mix a
+# supplement token with a free note (`Cp, Anavar`); tokens route individually.
+SUPP_LETTER = {"c": "creatine", "p": "protein", "m": "maca"}
+SPELLED = {
+    "cr": "creatine", "creat": "creatine", "creatina": "creatine", "creatine": "creatine",
+    "pr": "protein", "prot": "protein", "prote": "protein", "protein": "protein",
+    "proteina": "protein", "proteine": "protein",
+    "maca": "maca",
+}
+
+def token_supps(tok):
+    """Supplements a single token denotes, or None if it isn't supplement shorthand."""
+    low = tok.lower()
+    if low in SPELLED: return {SPELLED[low]}
+    if re.fullmatch(r"[cpm]+", low): return {SUPP_LETTER[ch] for ch in low}
+    return None
+
+def classify_annotations(cells):
+    """Split annotation cells into typed supplements + a free-text note string."""
+    supp, notes = set(), []
+    for raw in cells:
+        if raw is None: continue
+        s = str(raw).strip()
+        if not s: continue
+        if re.fullmatch(r"\d+([.,]\d+)?", s):
+            continue  # stray number that leaked into an annotation cell
+        leftover = []
+        for part in re.split(r"[\s/,]+", s):
+            if not part: continue
+            hit = token_supps(part)
+            if hit:
+                supp |= hit
+            else:
+                leftover.append(part)
+        if leftover:
+            notes.append(" ".join(leftover))
+    order = {"creatine": 0, "protein": 1, "maca": 2}
+    return sorted(supp, key=lambda x: order[x]), ", ".join(notes)
+
 def parse_value(v, exercise):
     """Return dict(reps, weightKg, modifiers, struggle) or None."""
     if v is None: return None
@@ -117,6 +177,15 @@ def main(path):
         col_sets = {c: [] for c in datecols}
         order = []
         round_counter = {}   # (col, exercise) -> round
+        # Locate the labelled meta rows; annotation rows are everything below Form.
+        loc_r = form_r = None
+        for r in range(2, ws.max_row + 1):
+            lab = ws.cell(r, 1).value
+            lab = str(lab).strip() if lab is not None else ""
+            if lab == "Location": loc_r = r
+            elif lab == "Form": form_r = r
+        # Annotation cells sit in the few unlabelled rows just below Form.
+        anno_rows = range(form_r + 1, min(ws.max_row, form_r + 8) + 1) if form_r else range(0)
         for r in range(2, ws.max_row + 1):
             raw = ws.cell(r, 1).value
             if not raw or not str(raw).strip(): continue
@@ -147,8 +216,23 @@ def main(path):
         ex_seen_order[workout] = order
         for c, d in datecols.items():
             if d > today or not col_sets[c]: continue
-            sessions.append({"id": str(uuid.uuid4()), "date": d.isoformat(),
-                             "workout": workout, "sets": col_sets[c]})
+            sess = {"id": str(uuid.uuid4()), "date": d.isoformat(),
+                    "workout": workout, "sets": col_sets[c]}
+            # Attach per-day metadata captured from the meta / annotation rows.
+            loc = ws.cell(loc_r, c).value if loc_r else None
+            loc = str(loc).strip() if loc is not None else ""
+            if loc and loc != "Location":
+                sess["location"] = loc
+            form = parse_form(ws.cell(form_r, c).value) if form_r else None
+            if form is not None:
+                sess["form"] = form
+            supp, note = classify_annotations(
+                [ws.cell(r, c).value for r in anno_rows])
+            if supp:
+                sess["supplements"] = supp
+            if note:
+                sess["notes"] = note
+            sessions.append(sess)
 
     # Reverse the canonicalization maps so each exercise carries its known aliases.
     alias_map = collections.defaultdict(list)

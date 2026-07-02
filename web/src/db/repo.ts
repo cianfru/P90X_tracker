@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Exercise, Modifier, WorkoutSet } from './types'
+import type { Exercise, Modifier, Session, WorkoutSet } from './types'
 import { getDeviceId, todayISO, uid } from '../lib/id'
 
 /*
@@ -70,6 +70,37 @@ export async function logSet(input: {
   }
   await db.sets.add(set)
   await enqueue('sets', set.id)
+}
+
+/**
+ * Update a session's per-day metadata (location / form / notes / supplements)
+ * and enqueue it for sync. Empty string / undefined clears a field.
+ */
+export async function updateSessionMeta(
+  id: string,
+  patch: Partial<
+    Pick<Session, 'location' | 'form' | 'notes' | 'supplements'>
+  >,
+): Promise<void> {
+  await db.sessions.update(id, patch)
+  await enqueue('sessions', id)
+}
+
+/** Recently used location labels (most-recent first) for quick re-selection. */
+export async function recentLocations(limit = 6): Promise<string[]> {
+  const rows = await db.sessions
+    .orderBy('createdAt')
+    .reverse()
+    .filter((s) => !s.deleted && !!s.location)
+    .limit(200)
+    .toArray()
+  const seen: string[] = []
+  for (const s of rows) {
+    const loc = s.location!.trim()
+    if (loc && !seen.includes(loc)) seen.push(loc)
+    if (seen.length >= limit) break
+  }
+  return seen
 }
 
 /** Soft-delete a set (append-only: flip the flag, keep the row for sync). */

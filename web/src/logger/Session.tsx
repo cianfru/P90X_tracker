@@ -6,6 +6,7 @@ import { deleteSession, templateExercises } from '../db/repo'
 import { fmtDate } from '../lib/id'
 import { ExerciseCard } from './ExerciseCard'
 import { Recap } from './Recap'
+import { SessionMeta } from './SessionMeta'
 import { Stat } from './ui'
 
 /*
@@ -122,6 +123,7 @@ export function Session({
       </div>
 
       <div className="space-y-2.5 px-4 pt-4 pb-24">
+        {session && <SessionMeta session={session} />}
         {exercises?.map((ex) => (
           <ExerciseCard
             key={ex.id}

@@ -1,5 +1,5 @@
 import { db } from '../db'
-import type { Modifier, Session, WorkoutSet } from '../db'
+import type { Modifier, Session, Supplement, WorkoutSet } from '../db'
 
 /*
  * Sync client — the other half of /api. Local-first: this never blocks the UI.
@@ -50,6 +50,10 @@ interface WireSession {
   workout_id: string
   device_id: string
   created_at: number
+  location: string | null
+  form: number | null
+  notes: string | null
+  supplements: Supplement[]
   deleted: boolean
 }
 interface WireSet {
@@ -71,6 +75,10 @@ const sessionToWire = (s: Session): WireSession => ({
   workout_id: s.workoutId,
   device_id: s.deviceId,
   created_at: s.createdAt,
+  location: s.location ?? null,
+  form: s.form ?? null,
+  notes: s.notes ?? null,
+  supplements: s.supplements ?? [],
   deleted: !!s.deleted,
 })
 const setToWire = (s: WorkoutSet): WireSet => ({
@@ -85,14 +93,21 @@ const setToWire = (s: WorkoutSet): WireSet => ({
   logged_at: s.loggedAt,
   deleted: s.deleted,
 })
-const wireToSession = (w: WireSession): Session => ({
-  id: w.id,
-  date: w.date,
-  workoutId: w.workout_id,
-  deviceId: w.device_id,
-  createdAt: w.created_at,
-  deleted: !!w.deleted,
-})
+const wireToSession = (w: WireSession): Session => {
+  const s: Session = {
+    id: w.id,
+    date: w.date,
+    workoutId: w.workout_id,
+    deviceId: w.device_id,
+    createdAt: w.created_at,
+    deleted: !!w.deleted,
+  }
+  if (w.location) s.location = w.location
+  if (w.form != null) s.form = w.form
+  if (w.notes) s.notes = w.notes
+  if (w.supplements?.length) s.supplements = w.supplements
+  return s
+}
 const wireToSet = (w: WireSet): WorkoutSet => ({
   id: w.id,
   sessionId: w.session_id,

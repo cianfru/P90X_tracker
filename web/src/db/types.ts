@@ -19,6 +19,14 @@ export type Modifier = (typeof MODIFIERS)[number]
 /** Whether a modifier makes the set harder or easier than the standard version. */
 export type ModifierEffect = 'harder' | 'easier' | 'neutral'
 
+/**
+ * Supplements taken on a training day. The spreadsheet noted these per day as
+ * letter-sets — `Cp` (creatine + protein), `C`, `P`, or `Cpm`/`C/P/M` adding
+ * maca (m). Typed, not text.
+ */
+export const SUPPLEMENTS = ['creatine', 'protein', 'maca'] as const
+export type Supplement = (typeof SUPPLEMENTS)[number]
+
 export interface ModifierMeta {
   /** Short chip label shown in the logger. */
   label: string
@@ -94,6 +102,18 @@ export interface Session {
   deviceId: string
   /** Client timestamp (ms) when the session row was created. */
   createdAt: number
+  /**
+   * Where the workout was done — a free-text label as the owner writes it:
+   * a city ("Bangkok"), an IATA code ("PNH"), or a place + "casa" (home).
+   * Geocoded client-side for the map; the raw label is always preserved.
+   */
+  location?: string
+  /** Self-assessed form/readiness that day, 1–10 (half-points allowed). */
+  form?: number
+  /** Free-text notes explaining the day ("caldo", "stanco", "dolore schiena"…). */
+  notes?: string
+  /** Supplements taken that day (creatine / protein). */
+  supplements?: Supplement[]
   /** Soft-delete (started the wrong routine); its sets are soft-deleted too. */
   deleted?: boolean
 }

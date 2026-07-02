@@ -8,7 +8,7 @@ import {
   Wifi,
 } from 'lucide-react'
 import { useOnlineStatus } from './lib/useOnlineStatus'
-import { ensureSeeded, needsHistorySeed, seedHistory } from './db'
+import { ensureSeeded, needsHistorySeed, seedHistory, seedHistoryMeta } from './db'
 import { useSync } from './sync/useSync'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
@@ -46,6 +46,9 @@ export default function App() {
         } finally {
           setImportPct(null)
         }
+      } else {
+        // Backfill location/form/notes/supplements onto a pre-existing import.
+        await seedHistoryMeta()
       }
     })()
   }, [])

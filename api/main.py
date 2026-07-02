@@ -60,6 +60,10 @@ class Session(BaseModel):
     workout_id: str
     device_id: str
     created_at: int
+    location: str | None = None
+    form: float | None = None
+    notes: str | None = None
+    supplements: list[str] = []
     deleted: bool = False
 
 
@@ -94,17 +98,24 @@ async def push(body: PushBody):
             for s in body.sessions:
                 await conn.execute(
                     """
-                    INSERT INTO sessions (id, date, workout_id, device_id, created_at, deleted, seq)
-                    VALUES ($1, $2::date, $3, $4, $5, $6, nextval('sync_seq'))
+                    INSERT INTO sessions (id, date, workout_id, device_id, created_at,
+                                          location, form, notes, supplements, deleted, seq)
+                    VALUES ($1, $2::date, $3, $4, $5, $6, $7, $8, $9::jsonb, $10,
+                            nextval('sync_seq'))
                     ON CONFLICT (id) DO UPDATE SET
                       date = EXCLUDED.date,
                       workout_id = EXCLUDED.workout_id,
                       device_id = EXCLUDED.device_id,
                       created_at = EXCLUDED.created_at,
+                      location = EXCLUDED.location,
+                      form = EXCLUDED.form,
+                      notes = EXCLUDED.notes,
+                      supplements = EXCLUDED.supplements,
                       deleted = EXCLUDED.deleted,
                       seq = nextval('sync_seq')
                     """,
-                    s.id, s.date, s.workout_id, s.device_id, s.created_at, s.deleted,
+                    s.id, s.date, s.workout_id, s.device_id, s.created_at,
+                    s.location, s.form, s.notes, json.dumps(s.supplements), s.deleted,
                 )
             for st in body.sets:
                 await conn.execute(
@@ -135,7 +146,8 @@ async def pull(since: int = 0):
     """Return sessions + sets with seq > since, plus the max seq as the cursor."""
     async with _pool.acquire() as conn:
         srows = await conn.fetch(
-            "SELECT id, date, workout_id, device_id, created_at, deleted, seq "
+            "SELECT id, date, workout_id, device_id, created_at, "
+            "location, form, notes, supplements, deleted, seq "
             "FROM sessions WHERE seq > $1 ORDER BY seq",
             since,
         )
@@ -149,6 +161,7 @@ async def pull(since: int = 0):
     sessions = []
     for r in srows:
         cursor = max(cursor, r["seq"])
+        supp = r["supplements"]
         sessions.append(
             {
                 "id": str(r["id"]),
@@ -156,6 +169,10 @@ async def pull(since: int = 0):
                 "workout_id": r["workout_id"],
                 "device_id": r["device_id"],
                 "created_at": r["created_at"],
+                "location": r["location"],
+                "form": r["form"],
+                "notes": r["notes"],
+                "supplements": json.loads(supp) if isinstance(supp, str) else (supp or []),
                 "deleted": r["deleted"],
             }
         )
