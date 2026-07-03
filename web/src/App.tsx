@@ -100,13 +100,13 @@ export default function App() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col">
-      <header className="relative">
+      <header className="frost sticky top-0 z-20 flex items-center justify-between gap-3 px-4 pt-5 pb-3">
         <img
           src="/header-banner.png"
           alt="P90X Workout Logger"
-          className="block w-full select-none"
+          className="h-14 w-auto shrink-0 select-none"
         />
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {!gActive &&
             syncState.enabled &&
             importPct === null &&
