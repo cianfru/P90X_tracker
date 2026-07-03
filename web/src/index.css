@@ -36,6 +36,13 @@ body,
   height: 100%;
 }
 
+/* Solid canvas everywhere so no black seam shows through in the iPhone safe
+   areas (iOS never leaves an un-painted strip to fall back to black). */
+html,
+body {
+  background-color: var(--color-canvas);
+}
+
 /* Page-wide aura hue — overwritten per program by setAura(); green by default. */
 :root {
   --aura: #3bff9e;
@@ -47,9 +54,25 @@ body {
   font-family: var(--font-sans);
   font-synthesis-weight: none;
   letter-spacing: -0.011em;
-  /* Big fluo aura anchored to the BOTTOM of the viewport (fixed), rising to
-     ~mid-screen and fading toward the top. Its hue is driven by --aura, set per
-     page so each program's background recalls its logo colour. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Respect the iPhone notch on top; the bottom safe area is owned by the nav
+     bar's own padding, so DON'T pad it here too (double padding left a black
+     strip that pushed the content up). */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0
+    env(safe-area-inset-left);
+}
+
+/* Big fluo aura, rising from the bottom to ~mid-screen and fading up. Painted on
+   a FIXED pseudo-element (not background-attachment:fixed, which iOS Safari
+   fails to render into the safe areas) so it covers the whole screen edge to
+   edge. Hue driven by --aura, set per page to recall each program's logo. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(
       155% 100% at 50% 116%,
@@ -62,14 +85,7 @@ body {
       95% 45% at 50% 118%,
       color-mix(in srgb, var(--aura) 55%, transparent),
       transparent 60%
-    ),
-    var(--color-canvas);
-  background-attachment: fixed;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  /* Respect the iPhone safe areas when installed to the home screen. */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+    );
 }
 
 /* Tabular, tightly-tracked numerals — the replacement for the old mono look. */
