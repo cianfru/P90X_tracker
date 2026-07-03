@@ -22,6 +22,14 @@ const PROGRAMS: { id: Program; blurb: string }[] = [
   { id: 'Body Beast', blurb: 'Hypertrophy — build & bulk' },
 ]
 
+/* Official metallic wordmarks (keyed transparent) used in place of plain text
+   on the program buttons. Body Beast has no logo → falls back to styled text. */
+const PROGRAM_LOGO: Partial<Record<Program, string>> = {
+  P90X: '/logo-p90x.png',
+  P90X2: '/logo-p90x2.png',
+  P90X3: '/logo-p90x3.png',
+}
+
 export function Home({
   onOpen,
   onMix,
@@ -72,10 +80,18 @@ export function Home({
         >
           <ChevronLeft size={18} /> Programs
         </button>
-        <h2 className="display text-2xl">
-          {program.id}
+        <h2 className="display flex items-center gap-2.5 text-2xl">
+          {PROGRAM_LOGO[program.id] ? (
+            <img
+              src={PROGRAM_LOGO[program.id]}
+              alt={program.id}
+              className="h-7 w-auto object-contain"
+            />
+          ) : (
+            program.id
+          )}
           <span
-            className="ml-2 align-middle text-sm font-semibold"
+            className="align-middle text-sm font-semibold"
             style={{ color: program.accent }}
           >
             {workouts.length} workouts
@@ -177,35 +193,48 @@ export function Home({
       <div className="mt-2.5 space-y-2.5">
         {PROGRAMS.map((p) => {
           const accent = programAccent(p.id)
+          const logo = PROGRAM_LOGO[p.id]
           return (
-          <button
-            key={p.id}
-            onClick={() => setProgramId(p.id)}
-            className="press card flex w-full items-center gap-3.5 px-4 py-4 text-left"
-          >
-            <span
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-              style={{
-                background: `linear-gradient(160deg, ${accent}33, ${accent}14)`,
-                color: accent,
-                boxShadow: `inset 0 0 0 1px ${accent}33`,
-              }}
+            <button
+              key={p.id}
+              onClick={() => setProgramId(p.id)}
+              className="press card flex w-full items-center gap-3.5 px-4 py-4 text-left"
             >
-              <Dumbbell size={22} strokeWidth={2.4} />
-            </span>
-            <span className="flex-1">
-              <span className="block text-lg font-bold tracking-tight">
-                {p.id}
+              {!logo && (
+                <span
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                  style={{
+                    background: `linear-gradient(160deg, ${accent}33, ${accent}14)`,
+                    color: accent,
+                    boxShadow: `inset 0 0 0 1px ${accent}33`,
+                  }}
+                >
+                  <Dumbbell size={22} strokeWidth={2.4} />
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt={p.id}
+                    className="h-[26px] w-auto max-w-[62%] object-contain object-left"
+                  />
+                ) : (
+                  <span className="block text-lg font-bold tracking-tight">
+                    {p.id}
+                  </span>
+                )}
+                <span className="mt-1.5 block text-[13px] text-ink-3">
+                  {p.blurb}
+                </span>
               </span>
-              <span className="block text-[13px] text-ink-3">{p.blurb}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="nums text-sm font-semibold text-ink-2">
-                {countFor(p.id)}
+              <span className="flex items-center gap-1.5">
+                <span className="nums text-sm font-semibold text-ink-2">
+                  {countFor(p.id)}
+                </span>
+                <ChevronRight size={18} className="text-ink-3" />
               </span>
-              <ChevronRight size={18} className="text-ink-3" />
-            </span>
-          </button>
+            </button>
           )
         })}
       </div>
