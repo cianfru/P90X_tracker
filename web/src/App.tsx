@@ -105,11 +105,8 @@ export default function App() {
           <img
             src="/logo-header.png"
             alt="P90X Workout Logger"
-            className="h-7 w-auto"
+            className="h-11 w-auto"
           />
-          <p className="mt-2 text-[13px] font-medium text-ink-3">
-            Train anywhere · fully offline
-          </p>
         </div>
         <div className="flex items-center gap-2">
           {!gActive &&
