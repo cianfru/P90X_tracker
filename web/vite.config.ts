@@ -5,6 +5,13 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Build stamp — surfaced in the Account screen so you can confirm which
+  // version the (offline-cached) app is actually running.
+  define: {
+    __BUILD_TIME__: JSON.stringify(
+      new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC',
+    ),
+  },
   plugins: [
     react(),
     tailwindcss(),

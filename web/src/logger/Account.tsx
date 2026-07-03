@@ -350,6 +350,10 @@ export function Account({
           out just forgets it on this device — your Sheet stays safe.
         </span>
       </div>
+
+      <p className="nums mt-6 text-center text-[11px] text-ink-3/70">
+        Build {__BUILD_TIME__}
+      </p>
     </div>
   )
 }
