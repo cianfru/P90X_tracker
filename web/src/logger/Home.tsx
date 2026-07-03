@@ -28,6 +28,7 @@ const PROGRAM_LOGO: Partial<Record<Program, string>> = {
   P90X: '/logo-p90x.png',
   P90X2: '/logo-p90x2.png',
   P90X3: '/logo-p90x3.png',
+  'Body Beast': '/logo-bodybeast.png',
 }
 
 export function Home({
@@ -85,7 +86,7 @@ export function Home({
             <img
               src={PROGRAM_LOGO[program.id]}
               alt={program.id}
-              className="h-7 w-auto object-contain"
+              className="max-h-9 w-auto object-contain"
             />
           ) : (
             program.id
@@ -217,7 +218,7 @@ export function Home({
                   <img
                     src={logo}
                     alt={p.id}
-                    className="h-[26px] w-auto max-w-[62%] object-contain object-left"
+                    className="max-h-9 w-auto max-w-[58%] object-contain object-left"
                   />
                 ) : (
                   <span className="block text-lg font-bold tracking-tight">
