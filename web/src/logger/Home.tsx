@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, ChevronRight, Dumbbell, Sparkles } from 'lucide-react'
 import { db } from '../db'
 import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
-import { programAccent } from './programColor'
+import { auraFor, programAccent, setAura } from './programColor'
 import { todayISO } from '../lib/id'
 import { Label } from './ui'
 
@@ -36,6 +36,8 @@ export function Home({
 }) {
   const templates = useLiveQuery(() => db.templates.orderBy('name').toArray())
   const [programId, setProgramId] = useState<Program | null>(null)
+  // Paint the aura the selected program's colour (green on the main list).
+  useEffect(() => setAura(auraFor(programId)), [programId])
   const program = programId
     ? { id: programId, accent: programAccent(programId) }
     : null

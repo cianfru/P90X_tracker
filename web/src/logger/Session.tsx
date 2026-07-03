@@ -4,7 +4,7 @@ import { ChevronLeft, Flag, Trash2 } from 'lucide-react'
 import { db } from '../db'
 import { deleteSession, templateExercises } from '../db/repo'
 import { capturePosition } from './geolocate'
-import { programAccent } from './programColor'
+import { auraFor, programAccent, setAura } from './programColor'
 import { fmtDate, getDeviceId } from '../lib/id'
 import { ExerciseCard } from './ExerciseCard'
 import { Recap } from './Recap'
@@ -62,6 +62,8 @@ export function Session({
   const curRound = curId ? roundOf(pos) : 1
   const curTotal = curId ? totalRoundsOf(curId) : 1
   const accent = programAccent(template?.program)
+  // Aura recalls this workout's program while the session is open.
+  useEffect(() => setAura(auraFor(template?.program)), [template?.program])
 
   // Capture GPS once, when a workout is freshly started on this device.
   const triedGeo = useRef(false)

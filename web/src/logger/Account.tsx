@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ChevronLeft,
   Cloud,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { db } from '../db'
 import { getBodyweight, setBodyweight } from './effort'
+import { AURA_DEFAULT, setAura } from './programColor'
 import {
   cachedAccount,
   googleClientId,
@@ -50,6 +51,7 @@ export function Account({
   const [error, setError] = useState<string | null>(null)
   const [choose, setChoose] = useState<{ id: string; count: number } | null>(null)
   const [bw, setBw] = useState(getBodyweight())
+  useEffect(() => setAura(AURA_DEFAULT), [])
 
   const configured = googleConfigured()
 

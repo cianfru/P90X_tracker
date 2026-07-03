@@ -4,6 +4,7 @@ import { ChevronLeft, PlayCircle, Shuffle, Sparkles } from 'lucide-react'
 import { db } from '../db'
 import type { Exercise } from '../db'
 import { startOrResumeSession } from '../db/repo'
+import { auraFor, setAura } from './programColor'
 import {
   baseCandidates,
   exerciseStatsMap,
@@ -67,6 +68,9 @@ export function Mixer({
   const [nonce, setNonce] = useState(0)
   const [mix, setMix] = useState<MixResult | null>(null)
   const [starting, setStarting] = useState(false)
+
+  // The Mixer's aura is its fluo pink.
+  useEffect(() => setAura(auraFor('Mixer')), [])
 
   const exById = useMemo(
     () => new Map((exercises ?? []).map((e) => [e.id, e] as const)),

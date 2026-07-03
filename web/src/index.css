@@ -36,35 +36,32 @@ body,
   height: 100%;
 }
 
+/* Page-wide aura hue — overwritten per program by setAura(); green by default. */
+:root {
+  --aura: #3bff9e;
+}
+
 body {
   margin: 0;
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-synthesis-weight: none;
   letter-spacing: -0.011em;
-  /* Colourful aurora anchored to the BOTTOM of the viewport (fixed), curving up
-     and fading toward the top. Three fluo brand hues — blue, green, pink —
-     centred just below the screen so only their top arc shows as a soft band. */
+  /* Big fluo aura anchored to the BOTTOM of the viewport (fixed), rising to
+     ~mid-screen and fading toward the top. Its hue is driven by --aura, set per
+     page so each program's background recalls its logo colour. */
   background:
     radial-gradient(
-      140% 62% at 50% 121%,
-      rgba(52, 245, 160, 0.42),
-      transparent 64%
+      155% 100% at 50% 116%,
+      color-mix(in srgb, var(--aura) 80%, transparent) 0%,
+      color-mix(in srgb, var(--aura) 42%, transparent) 26%,
+      color-mix(in srgb, var(--aura) 14%, transparent) 50%,
+      transparent 78%
     ),
     radial-gradient(
-      108% 56% at 6% 117%,
-      rgba(59, 203, 255, 0.36),
-      transparent 62%
-    ),
-    radial-gradient(
-      108% 56% at 96% 115%,
-      rgba(255, 92, 200, 0.32),
-      transparent 62%
-    ),
-    radial-gradient(
-      120% 40% at 50% -8%,
-      rgba(59, 203, 255, 0.05),
-      transparent 55%
+      95% 45% at 50% 118%,
+      color-mix(in srgb, var(--aura) 55%, transparent),
+      transparent 60%
     ),
     var(--color-canvas);
   background-attachment: fixed;

@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Activity } from 'lucide-react'
 import { db } from '../db'
+import { AURA_DEFAULT, setAura } from '../logger/programColor'
 import type { Supplement } from '../db'
 import { SUPPLEMENTS } from '../db'
 import { computeAnalytics } from './analytics'
@@ -25,6 +26,8 @@ export function Monitor({ tab }: { tab: Tab }) {
   const sets = useLiveQuery(() => db.sets.toArray())
   const exercises = useLiveQuery(() => db.exercises.toArray())
   const templates = useLiveQuery(() => db.templates.toArray())
+  // Progress is program-agnostic — keep the neutral green aura.
+  useEffect(() => setAura(AURA_DEFAULT), [])
 
   const ready = sessions && sets && exercises
   const a = useMemo(
