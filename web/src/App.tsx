@@ -1,10 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import {
+  Activity,
+  CalendarDays,
   Cloud,
   Dumbbell,
+  LineChart,
   Loader2,
+  Map as MapIcon,
   RefreshCw,
-  TrendingUp,
   UserRound,
   WifiOff,
   Wifi,
@@ -32,7 +35,7 @@ const Monitor = lazy(() =>
  * screen (its own header, no bottom nav) for one-handed logging at the gym.
  */
 
-type View = 'home' | 'monitor'
+type View = 'home' | 'overview' | 'month' | 'map' | 'exercise'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -180,7 +183,7 @@ export default function App() {
               </div>
             }
           >
-            <Monitor />
+            <Monitor tab={view} />
           </Suspense>
         )}
       </main>
@@ -206,34 +209,42 @@ function ConnPill({ online }: { online: boolean }) {
   )
 }
 
+const NAV: { id: View; Icon: typeof Dumbbell; label: string }[] = [
+  { id: 'home', Icon: Dumbbell, label: 'Train' },
+  { id: 'overview', Icon: Activity, label: 'Overview' },
+  { id: 'month', Icon: CalendarDays, label: 'Month' },
+  { id: 'map', Icon: MapIcon, label: 'Map' },
+  { id: 'exercise', Icon: LineChart, label: 'Exercise' },
+]
+
 function NavBar({ view, setView }: { view: View; setView: (v: View) => void }) {
-  const item = (id: View, Icon: typeof Dumbbell, label: string) => {
-    const active = view === id
-    return (
-      <button
-        onClick={() => setView(id)}
-        className="press relative flex flex-1 flex-col items-center gap-1 py-2.5"
-      >
-        <span
-          className={`flex h-9 w-16 items-center justify-center rounded-full transition ${
-            active ? 'bg-[#37e29a]/15 text-[#37e29a]' : 'text-ink-3'
-          }`}
-        >
-          <Icon size={20} strokeWidth={active ? 2.5 : 2} />
-        </span>
-        <span
-          className={`text-[11px] font-semibold ${active ? 'text-ink' : 'text-ink-3'}`}
-        >
-          {label}
-        </span>
-      </button>
-    )
-  }
   return (
     <nav className="frost fixed inset-x-0 bottom-0 z-20 border-t border-hair pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto flex max-w-md px-6">
-        {item('home', Dumbbell, 'Train')}
-        {item('monitor', TrendingUp, 'Progress')}
+      <div className="mx-auto flex max-w-md px-1.5">
+        {NAV.map(({ id, Icon, label }) => {
+          const active = view === id
+          return (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              aria-label={label}
+              className="press relative flex flex-1 flex-col items-center gap-1 py-2.5"
+            >
+              <span
+                className={`flex h-8 w-14 items-center justify-center rounded-full transition ${
+                  active ? 'bg-[#37e29a]/15 text-[#37e29a]' : 'text-ink-3'
+                }`}
+              >
+                <Icon size={19} strokeWidth={active ? 2.5 : 2} />
+              </span>
+              <span
+                className={`text-[10px] font-semibold ${active ? 'text-ink' : 'text-ink-3'}`}
+              >
+                {label}
+              </span>
+            </button>
+          )
+        })}
       </div>
     </nav>
   )

@@ -1,12 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import {
-  Activity,
-  CalendarDays,
-  Dumbbell,
-  LineChart,
-  Map as MapIcon,
-} from 'lucide-react'
+import { Activity } from 'lucide-react'
 import { db } from '../db'
 import type { Supplement } from '../db'
 import { SUPPLEMENTS } from '../db'
@@ -19,25 +13,18 @@ import { MapTab } from './MapTab'
 import { ExerciseTab } from './ExerciseTab'
 
 /*
- * Progress — a tabbed dashboard: Overview (headline trends), Month (calendar
- * with start times), Map (where you trained → drill into a session), and
- * Exercise (dedicated per-move progression). Each tab breathes on its own.
+ * Progress — the analytics surface. Which view shows (Overview / Month / Map /
+ * Exercise) is driven by the app's bottom navigation, so Monitor is a
+ * controlled switch on the `tab` prop. Each view breathes on its own.
  */
 
-type Tab = 'overview' | 'month' | 'map' | 'exercise'
-const TABS: { id: Tab; label: string; Icon: typeof MapIcon }[] = [
-  { id: 'overview', label: 'Overview', Icon: LineChart },
-  { id: 'month', label: 'Month', Icon: CalendarDays },
-  { id: 'map', label: 'Map', Icon: MapIcon },
-  { id: 'exercise', label: 'Exercise', Icon: Dumbbell },
-]
+export type Tab = 'overview' | 'month' | 'map' | 'exercise'
 
-export function Monitor() {
+export function Monitor({ tab }: { tab: Tab }) {
   const sessions = useLiveQuery(() => db.sessions.toArray())
   const sets = useLiveQuery(() => db.sets.toArray())
   const exercises = useLiveQuery(() => db.exercises.toArray())
   const templates = useLiveQuery(() => db.templates.toArray())
-  const [tab, setTab] = useState<Tab>('overview')
 
   const ready = sessions && sets && exercises
   const a = useMemo(
@@ -120,25 +107,15 @@ export function Monitor() {
 
   return (
     <div className="pt-2">
-      {/* Segmented tabs */}
-      <div className="mb-4 flex gap-1 rounded-2xl border border-hair bg-black/25 p-1">
-        {TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`press flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-[13px] font-semibold transition ${
-              tab === id
-                ? 'bg-white/10 text-ink'
-                : 'text-ink-3 active:text-ink-2'
-            }`}
-          >
-            <Icon size={15} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-
-      {tab === 'overview' && <OverviewTab a={a} meta={meta} nameFor={nameFor} />}
+      {tab === 'overview' && (
+        <OverviewTab
+          a={a}
+          meta={meta}
+          nameFor={nameFor}
+          sessions={sessions ?? []}
+          intensity={intensity}
+        />
+      )}
       {tab === 'month' && (
         <MonthTab
           sessions={sessions ?? []}

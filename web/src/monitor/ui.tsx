@@ -46,10 +46,10 @@ export function Kpi({
     rose: 'text-rose-400',
   }
   return (
-    <div className="card px-3.5 py-3">
-      <div className="eyebrow text-[10px]">{label}</div>
+    <div className="card flex flex-col items-center justify-center px-2 py-3.5 text-center">
+      <div className="eyebrow text-[10px] leading-tight">{label}</div>
       <div
-        className={`nums mt-1 text-lg font-bold whitespace-nowrap ${colors[tone]}`}
+        className={`nums mt-1.5 text-[17px] leading-none font-bold whitespace-nowrap ${colors[tone]}`}
       >
         {value}
         {unit && <span className="text-xs font-medium text-ink-3"> {unit}</span>}

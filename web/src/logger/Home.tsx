@@ -1,26 +1,18 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Dumbbell,
-  Minus,
-  Plus,
-  Sparkles,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Dumbbell, Sparkles } from 'lucide-react'
 import { db } from '../db'
 import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
-import { getBodyweight, setBodyweight } from './effort'
 import { programAccent } from './programColor'
-import { fmtDate, todayISO } from '../lib/id'
+import { todayISO } from '../lib/id'
 import { Label } from './ui'
 
 /*
- * Home — two steps: first pick a program (P90X / P90X2 / P90X3 / Body Beast),
- * then pick a workout from that program. Resume-today and recent sessions
- * (which span all programs) stay on the program screen as shortcuts. Programs
- * with no workouts yet show a "no workouts" slot. All reads live.
+ * Home — pure workout picker: first pick a program (P90X / P90X2 / P90X3 /
+ * Body Beast) or the Mixer, then pick a workout from that program. Resume-today
+ * stays as a shortcut to an in-progress session. Bodyweight and history live in
+ * the Account and Progress screens; the home stays focused on starting a workout.
  */
 
 const PROGRAMS: { id: Program; blurb: string }[] = [
@@ -42,14 +34,7 @@ export function Home({
   const program = programId
     ? { id: programId, accent: programAccent(programId) }
     : null
-  const [bw, setBw] = useState(getBodyweight())
   const today = todayISO()
-
-  const changeBw = (delta: number) => {
-    const v = Math.max(40, Math.min(200, bw + delta))
-    setBw(v)
-    setBodyweight(v)
-  }
 
   const todaySessions = useLiveQuery(
     async () =>
@@ -58,21 +43,8 @@ export function Home({
       ),
     [today],
   )
-  const recent = useLiveQuery(() =>
-    db.sessions
-      .orderBy('createdAt')
-      .reverse()
-      .filter((s) => !s.deleted)
-      .limit(5)
-      .toArray(),
-  )
   const counts = useLiveQuery(async () => {
-    const ids = [
-      ...new Set([
-        ...(todaySessions ?? []).map((s) => s.id),
-        ...(recent ?? []).map((s) => s.id),
-      ]),
-    ]
+    const ids = (todaySessions ?? []).map((s) => s.id)
     const entries = await Promise.all(
       ids.map(async (id) => {
         const rows = await db.sets.where('sessionId').equals(id).toArray()
@@ -80,7 +52,7 @@ export function Home({
       }),
     )
     return Object.fromEntries(entries) as Record<string, number>
-  }, [todaySessions, recent])
+  }, [todaySessions])
 
   const nameFor = (workoutId: string) =>
     templates?.find((t) => t.id === workoutId)?.name ?? workoutId
@@ -238,53 +210,6 @@ export function Home({
         })}
       </div>
 
-      {(recent?.length ?? 0) > 0 && (
-        <div className="mt-8">
-          <Label>Recent sessions</Label>
-          <div className="mt-2.5 overflow-hidden rounded-2xl border border-hair">
-            {recent?.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => onOpen(s.id)}
-                className={`flex w-full items-center justify-between bg-white/[0.02] px-4 py-3 text-sm active:bg-white/[0.05] ${
-                  i > 0 ? 'border-t border-hair' : ''
-                }`}
-              >
-                <span className="font-medium text-ink-2 capitalize">
-                  {nameFor(s.workoutId)}
-                </span>
-                <span className="nums text-[13px] text-ink-3">
-                  {fmtDate(s.date)} · {counts?.[s.id] ?? 0} sets
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bodyweight — feeds the effort colour coding (vest math, thresholds). */}
-      <div className="mt-8 flex items-center justify-between rounded-2xl border border-hair bg-white/[0.02] px-4 py-3">
-        <span className="eyebrow">Bodyweight</span>
-        <span className="flex items-center gap-2.5">
-          <button
-            onClick={() => changeBw(-1)}
-            aria-label="decrease bodyweight"
-            className="press flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-ink-2"
-          >
-            <Minus size={15} strokeWidth={2.5} />
-          </button>
-          <span className="nums w-16 text-center text-sm font-bold text-ink">
-            {bw} kg
-          </span>
-          <button
-            onClick={() => changeBw(1)}
-            aria-label="increase bodyweight"
-            className="press flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-ink-2"
-          >
-            <Plus size={15} strokeWidth={2.5} />
-          </button>
-        </span>
-      </div>
     </div>
   )
 }

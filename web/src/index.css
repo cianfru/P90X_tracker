@@ -42,15 +42,28 @@ body {
   font-family: var(--font-sans);
   font-synthesis-weight: none;
   letter-spacing: -0.011em;
+  /* Colourful aurora anchored to the BOTTOM of the viewport (fixed), curving up
+     and fading toward the top. Three fluo brand hues — blue, green, pink —
+     centred just below the screen so only their top arc shows as a soft band. */
   background:
     radial-gradient(
-      120% 80% at 50% -10%,
-      rgba(55, 226, 154, 0.06),
-      transparent 60%
+      140% 62% at 50% 121%,
+      rgba(52, 245, 160, 0.42),
+      transparent 64%
     ),
     radial-gradient(
-      100% 60% at 100% 0%,
-      rgba(59, 198, 255, 0.05),
+      108% 56% at 6% 117%,
+      rgba(59, 203, 255, 0.36),
+      transparent 62%
+    ),
+    radial-gradient(
+      108% 56% at 96% 115%,
+      rgba(255, 92, 200, 0.32),
+      transparent 62%
+    ),
+    radial-gradient(
+      120% 40% at 50% -8%,
+      rgba(59, 203, 255, 0.05),
       transparent 55%
     ),
     var(--color-canvas);
@@ -78,20 +91,23 @@ body {
   color: #c3cad6;
 }
 
-/* Standard elevated card surface. */
+/* Glassmorphic card surface — translucent + blurred so the aurora behind it
+   glows through the frost. */
 .card {
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.045),
-      rgba(255, 255, 255, 0.015)
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0.025)
     ),
-    var(--color-surface);
-  border: 1px solid var(--color-hair);
+    color-mix(in srgb, var(--color-surface) 52%, transparent);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1.25rem;
   box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
-    0 8px 24px -12px rgba(0, 0, 0, 0.6);
+    0 1px 0 0 rgba(255, 255, 255, 0.07) inset,
+    0 10px 32px -14px rgba(0, 0, 0, 0.7);
 }
 
 /* Display heading treatment — athletic, tight. */

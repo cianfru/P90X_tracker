@@ -4,10 +4,13 @@ import {
   Cloud,
   CloudOff,
   LogOut,
+  Minus,
+  Plus,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react'
 import { db } from '../db'
+import { getBodyweight, setBodyweight } from './effort'
 import {
   cachedAccount,
   googleClientId,
@@ -46,8 +49,15 @@ export function Account({
   const [pct, setPct] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [choose, setChoose] = useState<{ id: string; count: number } | null>(null)
+  const [bw, setBw] = useState(getBodyweight())
 
   const configured = googleConfigured()
+
+  const changeBw = (delta: number) => {
+    const v = Math.max(40, Math.min(200, bw + delta))
+    setBw(v)
+    setBodyweight(v)
+  }
 
   async function handleSignIn() {
     setError(null)
@@ -162,6 +172,35 @@ export function Account({
         Sign in with Google to back up to your own private spreadsheet — and
         restore it on any device. Everything keeps working offline.
       </p>
+
+      {/* Profile — bodyweight feeds the effort colour coding (vest math). */}
+      <div className="card mb-4 flex items-center justify-between p-4">
+        <div>
+          <div className="text-sm font-semibold">Bodyweight</div>
+          <p className="mt-0.5 text-[12px] text-ink-3">
+            Used to scale effort on bodyweight moves.
+          </p>
+        </div>
+        <span className="flex items-center gap-2.5">
+          <button
+            onClick={() => changeBw(-1)}
+            aria-label="decrease bodyweight"
+            className="press flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-ink-2"
+          >
+            <Minus size={15} strokeWidth={2.5} />
+          </button>
+          <span className="nums w-16 text-center text-sm font-bold text-ink">
+            {bw} kg
+          </span>
+          <button
+            onClick={() => changeBw(1)}
+            aria-label="increase bodyweight"
+            className="press flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-ink-2"
+          >
+            <Plus size={15} strokeWidth={2.5} />
+          </button>
+        </span>
+      </div>
 
       {/* Step 1 — Client ID (one-time app setup) */}
       {!configured && (

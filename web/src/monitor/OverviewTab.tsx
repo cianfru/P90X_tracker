@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -8,9 +9,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Pill } from 'lucide-react'
+import { ChevronRight, Pill } from 'lucide-react'
 import { SUPPLEMENTS } from '../db'
+import type { Session } from '../db'
+import { fmtDate } from '../lib/id'
 import type { Analytics } from './analytics'
+import { intensityColor, intensityLabel, type Intensity } from './intensity'
+import { SessionDetail } from './SessionDetail'
 import { C, Card, ChartBox, Kpi, tip } from './ui'
 
 interface Meta {
@@ -25,17 +30,81 @@ export function OverviewTab({
   a,
   meta,
   nameFor,
+  sessions,
+  intensity,
 }: {
   a: Analytics
   meta: Meta | null
   nameFor: (id: string) => string
+  sessions: Session[]
+  intensity: Map<string, Intensity>
 }) {
   const years = `${a.kpis.firstDate.slice(0, 4)}–${a.kpis.lastDate.slice(0, 4)}`
   const movers = [...a.topMovers.slice(0, 6), ...a.topMovers.slice(-3)]
   const maxMove = Math.max(1, ...movers.map((m) => Math.abs(m.pct)))
 
+  // Most-recent sessions — a quick way back into a workout you just logged.
+  const recent = useMemo(
+    () =>
+      sessions
+        .filter((s) => !s.deleted)
+        .sort((x, y) => y.createdAt - x.createdAt)
+        .slice(0, 5),
+    [sessions],
+  )
+  const [open, setOpen] = useState<{ id: string; score: number } | null>(null)
+
+  if (open) {
+    return (
+      <SessionDetail
+        sessionId={open.id}
+        score={open.score}
+        onBack={() => setOpen(null)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-4">
+      {recent.length > 0 && (
+        <Card title="Recent sessions" subtitle="jump back into a workout">
+          <div className="-mt-1 space-y-1.5">
+            {recent.map((s) => {
+              const score = intensity.get(s.id)?.score ?? 50
+              const color = intensityColor(score)
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setOpen({ id: s.id, score })}
+                  className="press flex w-full items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5 text-left"
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: color }}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold capitalize">
+                      {nameFor(s.workoutId)}
+                    </span>
+                    <span className="nums text-[12px] text-ink-3">
+                      {fmtDate(s.date)}
+                    </span>
+                  </span>
+                  <span
+                    className="nums text-sm font-bold"
+                    style={{ color }}
+                    title={intensityLabel(score)}
+                  >
+                    {score}
+                  </span>
+                  <ChevronRight size={16} className="shrink-0 text-ink-3" />
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
       <div className="grid auto-rows-fr grid-cols-3 gap-2">
         <Kpi label="sessions" value={a.kpis.sessions.toLocaleString()} tone="ink" />
         <Kpi
