@@ -104,7 +104,7 @@ export default function App() {
         <img
           src="/header-banner.png"
           alt="P90X Workout Logger"
-          className="h-14 w-auto shrink-0 select-none"
+          className="h-16 w-auto shrink-0 select-none"
         />
         <div className="flex items-center gap-2">
           {!gActive &&
