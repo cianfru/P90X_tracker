@@ -102,11 +102,12 @@ export default function App() {
     <div className="mx-auto flex min-h-full max-w-md flex-col">
       <header className="frost sticky top-0 z-20 flex items-center justify-between px-5 pt-7 pb-3">
         <div>
-          <h1 className="display text-[26px] leading-none">
-            P90<span className="text-[#37e29a]">X</span>
-            <span className="font-semibold text-ink-2"> Logbook</span>
-          </h1>
-          <p className="mt-1.5 text-[13px] font-medium text-ink-3">
+          <img
+            src="/logo-header.png"
+            alt="P90X Workout Logger"
+            className="h-7 w-auto"
+          />
+          <p className="mt-2 text-[13px] font-medium text-ink-3">
             Train anywhere · fully offline
           </p>
         </div>
