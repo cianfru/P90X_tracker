@@ -128,6 +128,18 @@ body {
   scrollbar-width: none;
 }
 
+/* Launch splash — the banner rises + fades in, the whole overlay fades out. */
+@keyframes splashIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Springy press feedback used across tappable cards/buttons. */
 .press {
   transition:

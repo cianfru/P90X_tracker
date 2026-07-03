@@ -44,6 +44,16 @@ export default function App() {
   const [showAccount, setShowAccount] = useState(false)
   const [showMixer, setShowMixer] = useState(false)
   const [, bumpAccount] = useState(0)
+  // Brief branded launch splash — fade it out shortly after mount.
+  const [splash, setSplash] = useState<'show' | 'fade' | 'gone'>('show')
+  useEffect(() => {
+    const t1 = setTimeout(() => setSplash('fade'), 1300)
+    const t2 = setTimeout(() => setSplash('gone'), 1800)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [])
   const online = useOnlineStatus()
   const gActive = googleActive()
   const syncState = useSync() // no-ops while Google is the active backend
@@ -100,6 +110,7 @@ export default function App() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col">
+      {splash !== 'gone' && <Splash fading={splash === 'fade'} />}
       <header className="frost sticky top-0 z-20 flex items-center justify-between gap-3 px-4 pt-5 pb-3">
         <img
           src="/header-banner.png"
@@ -185,6 +196,26 @@ export default function App() {
       </main>
 
       <NavBar view={view} setView={setView} />
+    </div>
+  )
+}
+
+function Splash({ fading }: { fading: boolean }) {
+  return (
+    <div
+      className={`fixed inset-0 z-[100] flex items-center justify-center px-8 transition-opacity duration-500 ${
+        fading ? 'opacity-0' : 'opacity-100'
+      }`}
+      style={{
+        background:
+          'radial-gradient(120% 70% at 50% 55%, rgba(59,255,158,0.16), transparent 62%), var(--color-canvas)',
+      }}
+    >
+      <img
+        src="/header-banner.png"
+        alt="P90X Workout Logger"
+        className="w-full max-w-sm animate-[splashIn_0.6s_ease-out] select-none"
+      />
     </div>
   )
 }
