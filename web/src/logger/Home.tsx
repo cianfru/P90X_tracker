@@ -24,8 +24,16 @@ const PROGRAM_LOGO: Partial<Record<Program, string>> = {
   P90X: '/logo-p90x.png',
   P90X2: '/logo-p90x2.png',
   P90X3: '/logo-p90x3.png',
-  'Body Beast': '/logo-bodybeast.png',
+  'Body Beast': '/logo-bodybeast.png', // full lockup on the button
 }
+
+/* Inside a program's section the drill-in header prefers a simpler mark:
+   Body Beast shows just the "BODY BEAST" wordmark (no gorilla / dumbbells). */
+const PROGRAM_LOGO_MARK: Partial<Record<Program, string>> = {
+  'Body Beast': '/logo-bodybeast-mark.png',
+}
+const sectionLogo = (p: Program): string | undefined =>
+  PROGRAM_LOGO_MARK[p] ?? PROGRAM_LOGO[p]
 
 export function Home({
   onOpen,
@@ -80,9 +88,9 @@ export function Home({
           <ChevronLeft size={18} /> Programs
         </button>
         <h2 className="display flex items-center gap-2.5 text-2xl">
-          {PROGRAM_LOGO[program.id] ? (
+          {sectionLogo(program.id) ? (
             <img
-              src={PROGRAM_LOGO[program.id]}
+              src={sectionLogo(program.id)}
               alt={program.id}
               className="max-h-9 w-auto object-contain"
             />
