@@ -15,15 +15,11 @@ import { Label } from './ui'
  * the Account and Progress screens; the home stays focused on starting a workout.
  */
 
-const PROGRAMS: { id: Program; blurb: string }[] = [
-  { id: 'P90X', blurb: 'Classic resistance block' },
-  { id: 'P90X2', blurb: 'X2 stability & power' },
-  { id: 'P90X3', blurb: '30-minute resistance' },
-  { id: 'Body Beast', blurb: 'Hypertrophy — build & bulk' },
-]
+const PROGRAMS: Program[] = ['P90X', 'P90X2', 'P90X3', 'Body Beast']
 
-/* Official metallic wordmarks (keyed transparent) used in place of plain text
-   on the program buttons. Body Beast has no logo → falls back to styled text. */
+/* Official logos (keyed transparent) shown on the program buttons in place of
+   text — the landing page reads as a clean stack of brand marks. A program
+   without a logo falls back to styled text. */
 const PROGRAM_LOGO: Partial<Record<Program, string>> = {
   P90X: '/logo-p90x.png',
   P90X2: '/logo-p90x2.png',
@@ -193,13 +189,13 @@ export function Home({
       <Label>Choose a program</Label>
       <div className="mt-2.5 space-y-2.5">
         {PROGRAMS.map((p) => {
-          const accent = programAccent(p.id)
-          const logo = PROGRAM_LOGO[p.id]
+          const accent = programAccent(p)
+          const logo = PROGRAM_LOGO[p]
           return (
             <button
-              key={p.id}
-              onClick={() => setProgramId(p.id)}
-              className="press card flex w-full items-center gap-3.5 px-4 py-4 text-left"
+              key={p}
+              onClick={() => setProgramId(p)}
+              className="press card flex w-full items-center gap-3 px-5 py-5 text-left"
             >
               {!logo && (
                 <span
@@ -213,25 +209,20 @@ export function Home({
                   <Dumbbell size={22} strokeWidth={2.4} />
                 </span>
               )}
-              <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 flex-1 items-center">
                 {logo ? (
                   <img
                     src={logo}
-                    alt={p.id}
-                    className="max-h-9 w-auto max-w-[58%] object-contain object-left"
+                    alt={p}
+                    className="max-h-12 w-auto max-w-full object-contain object-left"
                   />
                 ) : (
-                  <span className="block text-lg font-bold tracking-tight">
-                    {p.id}
-                  </span>
+                  <span className="text-xl font-bold tracking-tight">{p}</span>
                 )}
-                <span className="mt-1.5 block text-[13px] text-ink-3">
-                  {p.blurb}
-                </span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="nums text-sm font-semibold text-ink-2">
-                  {countFor(p.id)}
+                  {countFor(p)}
                 </span>
                 <ChevronRight size={18} className="text-ink-3" />
               </span>
