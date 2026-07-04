@@ -7,6 +7,7 @@ import { capturePosition } from './geolocate'
 import { auraFor, programAccent, setAura } from './programColor'
 import { fmtDate, getDeviceId } from '../lib/id'
 import { ExerciseCard } from './ExerciseCard'
+import { BeastGrid } from './BeastGrid'
 import { Recap } from './Recap'
 import { SessionMeta } from './SessionMeta'
 import { SessionFinish } from './SessionFinish'
@@ -203,18 +204,27 @@ export function Session({
 
       <div className="space-y-2.5 px-4 pt-4 pb-28">
         {session && <SessionMeta session={session} />}
-        {exercises?.map((ex) => (
-          <ExerciseCard
-            key={ex.id}
-            exercise={ex}
+        {template?.plan?.length ? (
+          <BeastGrid
             sessionId={sessionId}
+            template={template}
+            exById={new Map((exercises ?? []).map((e) => [e.id, e]))}
             accent={accent}
-            target={template?.targets?.[ex.id]}
-            isOpen={open === ex.id}
-            onToggle={() => setOpen(open === ex.id ? null : ex.id)}
-            onLogged={handleLogged}
           />
-        ))}
+        ) : (
+          exercises?.map((ex) => (
+            <ExerciseCard
+              key={ex.id}
+              exercise={ex}
+              sessionId={sessionId}
+              accent={accent}
+              target={template?.targets?.[ex.id]}
+              isOpen={open === ex.id}
+              onToggle={() => setOpen(open === ex.id ? null : ex.id)}
+              onLogged={handleLogged}
+            />
+          ))
+        )}
       </div>
     </div>
   )

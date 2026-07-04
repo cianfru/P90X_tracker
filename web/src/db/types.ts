@@ -105,6 +105,27 @@ export interface Exercise {
 /** The training programs the workouts belong to. `Mixer` = auto-generated. */
 export type Program = 'P90X' | 'P90X2' | 'P90X3' | 'Body Beast' | 'Mixer'
 
+/**
+ * Body Beast set structure. Its workouts are set-based (not circuits): a move is
+ * done for N sets before the next, and supersets/giant sets alternate a few
+ * moves. `plan` captures each move's group + set count so the logger can render
+ * a worksheet grid (exercise rows × set columns) instead of the card flow.
+ */
+export type BeastGroupKind =
+  | 'single'
+  | 'super'
+  | 'giant'
+  | 'circuit'
+  | 'progressive'
+  | 'force'
+  | 'combo'
+  | 'multi'
+
+export interface BeastGroup {
+  kind: BeastGroupKind
+  items: { id: string; sets: number }[]
+}
+
 export interface WorkoutTemplate {
   id: string
   name: string
@@ -133,6 +154,8 @@ export interface WorkoutTemplate {
   basedOn?: string
   /** Per-exercise pre-fill targets (reps / weight) for a generated Mixer. */
   targets?: Record<string, { reps?: number; weightKg?: number }>
+  /** Body Beast set-by-set structure — drives the worksheet grid logger. */
+  plan?: BeastGroup[]
 }
 
 export interface Session {

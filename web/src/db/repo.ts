@@ -73,6 +73,38 @@ export async function logSet(input: {
 }
 
 /**
+ * Log a set into a SPECIFIC slot (round) — for the Body Beast grid where each
+ * cell is set N of an exercise. Any existing set at that round is soft-deleted
+ * first so re-tapping a cell overwrites it rather than stacking.
+ */
+export async function logSetAt(input: {
+  sessionId: string
+  exerciseId: string
+  round: number
+  reps: number
+  weightKg: number | null
+}): Promise<void> {
+  const existing = await sessionExerciseSets(input.sessionId, input.exerciseId)
+  for (const s of existing.filter((s) => s.round === input.round)) {
+    await softDeleteSet(s.id)
+  }
+  const set: WorkoutSet = {
+    id: uid(),
+    sessionId: input.sessionId,
+    exerciseId: input.exerciseId,
+    reps: input.reps,
+    weightKg: input.weightKg,
+    round: input.round,
+    modifiers: [],
+    struggle: false,
+    loggedAt: Date.now(),
+    deleted: false,
+  }
+  await db.sets.add(set)
+  await enqueue('sets', set.id)
+}
+
+/**
  * Update a session's per-day metadata (location / form / notes / supplements)
  * and enqueue it for sync. Empty string / undefined clears a field.
  */
