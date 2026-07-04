@@ -39,7 +39,13 @@ export const AURA_DEFAULT = PROGRAM_AURA.P90X
 export const auraFor = (p?: Program | null): string =>
   (p && PROGRAM_AURA[p]) || AURA_DEFAULT
 
-/** Drive the page-wide aura by writing the CSS variable the body gradient reads. */
+/** Drive the page-wide aura by writing an "r, g, b" triplet the body gradient
+ *  reads via rgba() — avoids color-mix(), which older mobile browsers drop. */
 export const setAura = (hex: string): void => {
-  document.documentElement.style.setProperty('--aura', hex)
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  if (Number.isNaN(r + g + b)) return
+  document.documentElement.style.setProperty('--aura-rgb', `${r}, ${g}, ${b}`)
 }

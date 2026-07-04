@@ -43,9 +43,10 @@ body {
   background-color: var(--color-canvas);
 }
 
-/* Page-wide aura hue — overwritten per program by setAura(); green by default. */
+/* Page-wide aura hue as an "r, g, b" triplet — overwritten per program by
+   setAura(); green by default. (rgba, not color-mix, for mobile support.) */
 :root {
-  --aura: #3bff9e;
+  --aura-rgb: 59, 255, 158;
 }
 
 body {
@@ -76,14 +77,14 @@ body::before {
   background:
     radial-gradient(
       155% 100% at 50% 116%,
-      color-mix(in srgb, var(--aura) 80%, transparent) 0%,
-      color-mix(in srgb, var(--aura) 42%, transparent) 26%,
-      color-mix(in srgb, var(--aura) 14%, transparent) 50%,
+      rgba(var(--aura-rgb), 0.8) 0%,
+      rgba(var(--aura-rgb), 0.42) 26%,
+      rgba(var(--aura-rgb), 0.14) 50%,
       transparent 78%
     ),
     radial-gradient(
       95% 45% at 50% 118%,
-      color-mix(in srgb, var(--aura) 55%, transparent),
+      rgba(var(--aura-rgb), 0.55),
       transparent 60%
     );
 }
@@ -113,7 +114,7 @@ body::before {
       rgba(255, 255, 255, 0.07),
       rgba(255, 255, 255, 0.025)
     ),
-    color-mix(in srgb, var(--color-surface) 52%, transparent);
+    rgba(20, 22, 29, 0.52);
   backdrop-filter: blur(20px) saturate(1.5);
   -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -131,7 +132,7 @@ body::before {
 
 /* Frosted bar (header / tab bar). */
 .frost {
-  background: color-mix(in srgb, var(--color-canvas) 72%, transparent);
+  background: rgba(10, 11, 15, 0.72);
   backdrop-filter: saturate(1.6) blur(18px);
   -webkit-backdrop-filter: saturate(1.6) blur(18px);
 }
