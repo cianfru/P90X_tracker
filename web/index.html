@@ -16,6 +16,33 @@
     />
     <meta name="apple-mobile-web-app-title" content="P90X" />
     <title>P90X Logger</title>
+    <style>
+      /* Portrait-only. iOS PWAs ignore the manifest orientation lock, so block
+         the UI when a phone is held sideways and ask to rotate back. Scoped to
+         phone-height landscape so tablets/desktop aren't affected. */
+      #landscape-lock {
+        display: none;
+      }
+      @media (orientation: landscape) and (max-height: 500px) {
+        #landscape-lock {
+          display: flex;
+          position: fixed;
+          inset: 0;
+          z-index: 2147483647;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          padding: 24px;
+          text-align: center;
+          background: #0a0b0f;
+          color: #fff;
+          font-family:
+            -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+            sans-serif;
+        }
+      }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,6 +52,27 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="landscape-lock" aria-hidden="true">
+      <svg
+        width="42"
+        height="42"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#37e29a"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="1 4 1 10 7 10"></polyline>
+        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+      </svg>
+      <p style="margin: 0; font-size: 16px; font-weight: 700">
+        Rotate to portrait
+      </p>
+      <p style="margin: 0; font-size: 13px; color: #aab3c2">
+        P90X Logbook works upright only
+      </p>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
