@@ -132,7 +132,9 @@ body::before {
 
 /* Frosted bar (header / tab bar). */
 .frost {
-  background: rgba(10, 11, 15, 0.72);
+  /* Fairly opaque so scrolled content never bleeds through even where the
+     backdrop-filter blur isn't supported (some mobile browsers). */
+  background: rgba(10, 11, 15, 0.88);
   backdrop-filter: saturate(1.6) blur(18px);
   -webkit-backdrop-filter: saturate(1.6) blur(18px);
 }
