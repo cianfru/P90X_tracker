@@ -252,7 +252,7 @@ const NAV: { id: View; Icon: typeof Dumbbell; label: string }[] = [
 
 function NavBar({ view, setView }: { view: View; setView: (v: View) => void }) {
   return (
-    <nav className="frost fixed inset-x-0 bottom-0 z-20 border-t border-hair pb-[env(safe-area-inset-bottom)]">
+    <nav className="frost-dock fixed inset-x-0 bottom-0 z-20 border-t border-hair pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto flex max-w-md px-1.5">
         {NAV.map(({ id, Icon, label }) => {
           const active = view === id

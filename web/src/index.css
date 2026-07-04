@@ -137,11 +137,26 @@ body::before {
   letter-spacing: -0.03em;
 }
 
-/* Frosted bar (header / tab bar). */
+/* Frosted top bar (header). Opaque because content scrolls behind it and on
+   mobile the backdrop-filter blur doesn't render, so it must hide that content
+   with fill alone. */
 .frost {
-  /* Fairly opaque so scrolled content never bleeds through even where the
-     backdrop-filter blur isn't supported (some mobile browsers). */
   background: rgba(10, 11, 15, 0.88);
+  backdrop-filter: saturate(1.6) blur(18px);
+  -webkit-backdrop-filter: saturate(1.6) blur(18px);
+}
+
+/* Bottom nav "dock". UNLIKE the header, it sits over the aura's bright zone at
+   the bottom of the screen — a fully-opaque bar reads as a black panel hiding
+   the glow (mobile drops the blur). It fades to translucent at its TOP edge so
+   the aura glows up through it; content is held clear of it by the main's
+   bottom padding, so it doesn't need to be opaque to hide scrolled content. */
+.frost-dock {
+  background: linear-gradient(
+    to top,
+    rgba(10, 11, 15, 0.9) 35%,
+    rgba(10, 11, 15, 0.45) 100%
+  );
   backdrop-filter: saturate(1.6) blur(18px);
   -webkit-backdrop-filter: saturate(1.6) blur(18px);
 }
@@ -163,6 +178,41 @@ body::before {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Hype glow for the Mix-a-workout banner — a soft fluo-lime neon that gently
+   breathes. The glow lives on a ::after whose OPACITY pulses (a compositor-only
+   animation), so it never repaints the page. */
+@keyframes mixGlow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.mix-glow {
+  position: relative;
+  isolation: isolate;
+}
+.mix-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 24px 0 rgba(198, 242, 74, 0.5),
+    0 0 64px -8px rgba(198, 242, 74, 0.34);
+  animation: mixGlow 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mix-glow::after {
+    animation: none;
+    opacity: 0.8;
   }
 }
 
