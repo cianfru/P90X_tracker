@@ -83,9 +83,10 @@ export function Account({
         const count = await db.sessions.count()
         setChoose({ id, count })
       } else {
-        // Existing sheet: restore/pull, then enable auto-sync.
+        // Existing sheet: full reconcile (restore everything by UUID), then
+        // enable auto-sync.
         setBusy('sync')
-        await syncGoogle()
+        await syncGoogle({ full: true })
         markMigrationDone()
         onChange()
       }
@@ -147,7 +148,9 @@ export function Account({
   async function handleSyncNow() {
     setBusy('sync')
     setError(null)
-    const r = await syncGoogle()
+    // Full reconcile so a manual "Sync now" always pulls the whole sheet
+    // (e.g. after another device did a full backup).
+    const r = await syncGoogle({ full: true })
     if (!r.ok && r.reason) setError(r.reason)
     setBusy(null)
   }

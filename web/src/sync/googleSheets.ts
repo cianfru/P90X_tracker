@@ -267,6 +267,11 @@ export async function pushAll(
   await db.meta.put({ key: rowKey(SESSIONS), value: sessions.length + 1 })
   await db.meta.put({ key: rowKey(SETS), value: sets.length + 1 })
   await db.meta.put({ key: 'lastSyncAt', value: Date.now() })
+  // Bump the generation so other devices know the sheet was fully rewritten and
+  // must reconcile everything rather than trust their row cursors.
+  const gen = String(Date.now())
+  await writeGen(id, gen)
+  await db.meta.put({ key: 'gsheet-gen', value: gen })
   markMigrationDone()
   // Rebuild the whole human-readable view (best-effort; never fail the backup).
   try {
@@ -380,6 +385,42 @@ export async function rebuildReadable(
   }
 }
 
+// A "generation" stamp in a cell OUTSIDE the data columns. `pushAll` bumps it
+// whenever it rewrites the whole sheet; other devices notice the change and do
+// a full reconcile (row-position cursors are meaningless after a rewrite).
+const GEN_CELL = `${SESSIONS}!N1`
+async function readGen(id: string): Promise<string> {
+  try {
+    const j = await api<{ values?: string[][] }>(
+      `${SHEETS_API}/${id}/values/${encodeURIComponent(GEN_CELL)}`,
+    )
+    return j.values?.[0]?.[0] ?? ''
+  } catch {
+    return ''
+  }
+}
+async function writeGen(id: string, gen: string): Promise<void> {
+  await api(
+    `${SHEETS_API}/${id}/values/${encodeURIComponent(GEN_CELL)}?valueInputOption=RAW`,
+    { method: 'PUT', body: JSON.stringify({ values: [[gen]] }) },
+  )
+}
+
+/**
+ * Read the ENTIRE sheet and upsert every row into Dexie by UUID. Idempotent and
+ * always correct — used on sign-in, manual sync, and after a remote full backup
+ * rewrote the sheet (which invalidates the incremental row cursors).
+ */
+async function pullFull(id: string): Promise<{ sessions: number; sets: number }> {
+  const sVals = (await readRows(id, SESSIONS, 2)).filter((r) => r[0])
+  const tVals = (await readRows(id, SETS, 2)).filter((r) => r[0])
+  if (sVals.length) await db.sessions.bulkPut(sVals.map(rowToSession))
+  if (tVals.length) await db.sets.bulkPut(tVals.map(rowToSet))
+  await db.meta.put({ key: rowKey(SESSIONS), value: sVals.length + 1 })
+  await db.meta.put({ key: rowKey(SETS), value: tVals.length + 1 })
+  return { sessions: sVals.length, sets: tVals.length }
+}
+
 /** Pull rows appended since our cursor and upsert them into Dexie. */
 async function pullNew(id: string): Promise<{ sessions: number; sets: number }> {
   const cursor = async (tab: string) =>
@@ -403,8 +444,13 @@ async function pullNew(id: string): Promise<{ sessions: number; sets: number }> 
 
 let running = false
 
-/** Full Google sync: ensure sheet, push queued rows, pull new ones. */
-export async function syncGoogle(): Promise<{
+/**
+ * Full Google sync: ensure sheet, push queued rows, pull new ones. Pass
+ * `{ full: true }` to reconcile the ENTIRE sheet by UUID (sign-in / manual
+ * sync). Otherwise it pulls incrementally, but auto-escalates to a full
+ * reconcile when the sheet's generation stamp shows it was rewritten elsewhere.
+ */
+export async function syncGoogle(opts?: { full?: boolean }): Promise<{
   ok: boolean
   reason?: string
   pulled?: { sessions: number; sets: number }
@@ -415,7 +461,15 @@ export async function syncGoogle(): Promise<{
   try {
     const { id } = await ensureSpreadsheet()
     const touched = await pushOutbox(id)
-    const pulled = await pullNew(id)
+    const remoteGen = await readGen(id)
+    const localGen = ((await db.meta.get('gsheet-gen'))?.value as string) ?? ''
+    let pulled
+    if (opts?.full || (remoteGen && remoteGen !== localGen)) {
+      pulled = await pullFull(id)
+      if (remoteGen) await db.meta.put({ key: 'gsheet-gen', value: remoteGen })
+    } else {
+      pulled = await pullNew(id)
+    }
     await db.meta.put({ key: 'lastSyncAt', value: Date.now() })
     // Refresh only the readable tabs for the workouts we just pushed.
     if (touched.size) {
