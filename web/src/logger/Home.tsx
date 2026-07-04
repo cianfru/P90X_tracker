@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, Dumbbell, Sparkles } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react'
 import { db } from '../db'
 import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
@@ -180,25 +180,6 @@ export function Home({
         </div>
       )}
 
-      {/* Mixer — auto-generated variety, paced by a video you know. */}
-      <button
-        onClick={onMix}
-        className="press mb-6 flex w-full items-center gap-3.5 rounded-2xl border border-[#ff5cc8]/30 bg-[#ff5cc8]/10 px-4 py-4 text-left"
-      >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#ff5cc8]/20 text-[#ff5cc8]">
-          <Sparkles size={22} />
-        </span>
-        <span className="flex-1">
-          <span className="block text-lg font-bold text-[#ffa9e4]">
-            Mix a workout
-          </span>
-          <span className="block text-[13px] text-ink-3">
-            Fresh moves for variety, paced by a video you know
-          </span>
-        </span>
-        <ChevronRight size={18} className="text-[#ff5cc8]" />
-      </button>
-
       <Label>Choose a program</Label>
       <div className="mt-2.5 space-y-2.5">
         {PROGRAMS.map((p) => {
@@ -244,6 +225,18 @@ export function Home({
         })}
       </div>
 
+      {/* Mixer — auto-generated variety, paced by a video you know. */}
+      <button
+        onClick={onMix}
+        aria-label="Mix a workout"
+        className="press mt-3 block w-full overflow-hidden rounded-2xl border border-[#c6f24a]/25 bg-black/30"
+      >
+        <img
+          src="/mix-banner.png"
+          alt="Mix a workout"
+          className="w-full select-none"
+        />
+      </button>
     </div>
   )
 }
