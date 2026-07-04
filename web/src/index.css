@@ -166,46 +166,6 @@ body::before {
   }
 }
 
-/* Hype glow for the Mix-a-workout banner — a soft fluo-lime neon that gently
-   breathes, for character without being loud.
-
-   The glow lives on a ::after pseudo-element whose OPACITY pulses. Animating
-   opacity is a compositor-only operation, so it never triggers the full-page
-   repaints that an animated box-shadow does — those repaints were knocking the
-   fixed aura layer black on mobile. The glow now breathes in complete isolation
-   from the rest of the page. */
-@keyframes mixGlow {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-.mix-glow {
-  position: relative;
-  isolation: isolate;
-}
-.mix-glow::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow:
-    0 0 24px 0 rgba(198, 242, 74, 0.5),
-    0 0 64px -8px rgba(198, 242, 74, 0.34);
-  animation: mixGlow 2.8s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .mix-glow::after {
-    animation: none;
-    opacity: 0.8;
-  }
-}
-
 /* Springy press feedback used across tappable cards/buttons. */
 .press {
   transition:

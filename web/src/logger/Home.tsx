@@ -229,18 +229,13 @@ export function Home({
       <button
         onClick={onMix}
         aria-label="Mix a workout"
-        className="press mix-glow mt-3 block w-full rounded-2xl border border-[#c6f24a]/35 bg-black/30"
+        className="press mt-3 block w-full overflow-hidden rounded-2xl border border-[#c6f24a]/35 bg-black/30"
       >
-        {/* Clip the banner to the rounded corners on an INNER wrapper, so the
-            button itself keeps no `overflow-hidden` and the .mix-glow pseudo
-            can spill its neon outside the box. */}
-        <span className="block overflow-hidden rounded-2xl">
-          <img
-            src="/mix-banner.png"
-            alt="Mix a workout"
-            className="block h-[88px] w-full select-none object-cover"
-          />
-        </span>
+        <img
+          src="/mix-banner.png"
+          alt="Mix a workout"
+          className="block h-[88px] w-full select-none object-cover"
+        />
       </button>
     </div>
   )
