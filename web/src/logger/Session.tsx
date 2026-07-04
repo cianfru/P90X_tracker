@@ -9,6 +9,7 @@ import { fmtDate, getDeviceId } from '../lib/id'
 import { ExerciseCard } from './ExerciseCard'
 import { Recap } from './Recap'
 import { SessionMeta } from './SessionMeta'
+import { SessionFinish } from './SessionFinish'
 import { Stat } from './ui'
 
 /*
@@ -39,6 +40,7 @@ export function Session({
   )
 
   const [open, setOpen] = useState<string | null>(null)
+  const [finishing, setFinishing] = useState(false)
   const [showRecap, setShowRecap] = useState(false)
   // The full performed order (exercise ids, repeats allowed): an explicit
   // `sequence` for non-uniform workouts, else the list repeated `rounds` times.
@@ -51,8 +53,8 @@ export function Session({
   const [pos, setPos] = useState(0)
   useEffect(() => setPos(0), [sessionId])
   useEffect(() => {
-    if (open === null && walk.length && !showRecap) setOpen(walk[0])
-  }, [walk, open, showRecap])
+    if (open === null && walk.length && !showRecap && !finishing) setOpen(walk[0])
+  }, [walk, open, showRecap, finishing])
 
   // Round of the exercise currently at `pos` (nth time it appears in the walk).
   const curId = walk[pos]
@@ -99,7 +101,7 @@ export function Session({
       setOpen(walk[nextPos])
     } else {
       setOpen(null)
-      setShowRecap(true)
+      setFinishing(true)
     }
   }
 
@@ -110,6 +112,20 @@ export function Session({
     if (!ok) return
     await deleteSession(sessionId)
     onBack()
+  }
+
+  if (finishing && session) {
+    return (
+      <SessionFinish
+        session={session}
+        accent={accent}
+        onBack={() => setFinishing(false)}
+        onEnd={() => {
+          setFinishing(false)
+          setShowRecap(true)
+        }}
+      />
+    )
   }
 
   if (showRecap) {
@@ -150,9 +166,9 @@ export function Session({
             </div>
           </div>
           <button
-            onClick={() => setShowRecap(true)}
+            onClick={() => setFinishing(true)}
             aria-label="finish workout"
-            title="finish — recap vs previous sessions"
+            title="finish — rate it, then recap"
             className="press flex h-9 w-9 items-center justify-center rounded-full"
             style={{ background: `${accent}26`, color: accent }}
           >

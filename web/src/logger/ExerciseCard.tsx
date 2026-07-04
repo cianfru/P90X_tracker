@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, Flame, Weight, X } from 'lucide-react'
+import { ArrowRight, Flame, Plus, Weight, X } from 'lucide-react'
 import type { Exercise, Modifier } from '../db'
 import { MODIFIERS, MODIFIER_META } from '../db'
 import { logSet, sessionExerciseSets, softDeleteSet } from '../db/repo'
@@ -112,7 +112,7 @@ export function ExerciseCard({
   const toggleMod = (m: Modifier) =>
     setMods((p) => (p.includes(m) ? p.filter((x) => x !== m) : [...p, m]))
 
-  async function log() {
+  async function commit() {
     await logSet({
       sessionId,
       exerciseId: exercise.id,
@@ -124,7 +124,17 @@ export function ExerciseCard({
     setMods([])
     setStruggle(false)
     setVestOn(false)
+  }
+  // Log this set and advance to the next exercise (the circuit flow).
+  async function logNext() {
+    await commit()
     onLogged?.(exercise.id)
+  }
+  // Log this set but STAY on the exercise — for set-based moves (e.g. Body
+  // Beast) where you do several sets before moving on. The card reopens the
+  // next round automatically.
+  async function logStay() {
+    await commit()
   }
 
   return (
@@ -275,16 +285,27 @@ export function ExerciseCard({
             </Chip>
           </div>
 
-          <button
-            onClick={log}
-            className="press mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-bold text-[#06140d]"
-            style={{
-              background: toneColor,
-              boxShadow: `0 8px 24px -8px ${toneColor}99`,
-            }}
-          >
-            Log &amp; next <ArrowRight size={18} strokeWidth={2.6} />
-          </button>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={logStay}
+              aria-label="log set and stay for another"
+              title="log this set, stay for another"
+              className="press flex shrink-0 items-center justify-center gap-1 rounded-2xl border px-4 py-3.5 text-[15px] font-bold"
+              style={{ borderColor: `${toneColor}66`, color: toneColor }}
+            >
+              <Plus size={18} strokeWidth={2.6} /> Set
+            </button>
+            <button
+              onClick={logNext}
+              className="press flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-bold text-[#06140d]"
+              style={{
+                background: toneColor,
+                boxShadow: `0 8px 24px -8px ${toneColor}99`,
+              }}
+            >
+              Log &amp; next <ArrowRight size={18} strokeWidth={2.6} />
+            </button>
+          </div>
 
           {sets.length > 0 && (
             <div className="mt-3 space-y-1.5">

@@ -1,60 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown, LocateFixed, MapPin } from 'lucide-react'
-import type { Session, Supplement } from '../db'
-import { SUPPLEMENTS } from '../db'
+import type { Session } from '../db'
 import { recentLocations, updateSessionMeta } from '../db/repo'
 import { capturePosition, type GeoState } from './geolocate'
-import { Chip } from './ui'
 
 /*
- * Per-day session metadata, mirroring the old spreadsheet's Location / Form /
- * notes / supplement columns. Collapsed to a one-line summary; tap to edit.
- * Every change writes straight to Dexie (and the sync outbox) — local-first.
+ * In-session location card. Where you trained is captured while you log (it
+ * feeds the map). Form / supplements / notes are asked at the END of the
+ * workout instead — see SessionFinish. Collapsed to a one-line summary; tap
+ * to edit. Every change writes straight to Dexie (and the sync outbox).
  */
-
-const SUPP_LABEL: Record<Supplement, string> = {
-  creatine: 'Creatine',
-  protein: 'Protein',
-  maca: 'Maca',
-  aminos: 'Aminos',
-}
-const SUPP_SHORT: Record<Supplement, string> = {
-  creatine: 'C',
-  protein: 'P',
-  maca: 'M',
-  aminos: 'A',
-}
-
-function summary(s: Session): string {
-  const bits: string[] = []
-  if (s.location) bits.push(s.location)
-  if (s.form != null) bits.push(`form ${s.form}`)
-  if (s.supplements?.length)
-    bits.push(s.supplements.map((x) => SUPP_SHORT[x]).join(''))
-  return bits.join(' · ')
-}
 
 export function SessionMeta({ session }: { session: Session }) {
   const [open, setOpen] = useState(false)
   const [location, setLocation] = useState(session.location ?? '')
-  const [notes, setNotes] = useState(session.notes ?? '')
   const [geo, setGeo] = useState<GeoState>('idle')
   const recent = useLiveQuery(() => recentLocations(), []) ?? []
 
-  // Reset the local text fields only when we switch to a different session.
+  // Reset the local field only when we switch to a different session.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setLocation(session.location ?? ''), [session.id])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setNotes(session.notes ?? ''), [session.id])
   // Fill the field when geolocation auto-detects a place, without clobbering typing.
   useEffect(() => {
     if (session.location && !location) setLocation(session.location)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.location])
-
-  const form = session.form ?? null
-  const supplements = session.supplements ?? []
 
   const commitLocation = (v: string) =>
     updateSessionMeta(session.id, { location: v.trim() || undefined })
@@ -62,20 +33,6 @@ export function SessionMeta({ session }: { session: Session }) {
     setGeo('locating')
     setGeo(await capturePosition(session.id, !location.trim()))
   }
-  const commitNotes = (v: string) =>
-    updateSessionMeta(session.id, { notes: v.trim() || undefined })
-  const setForm = (v: number | null) =>
-    updateSessionMeta(session.id, { form: v ?? undefined })
-  const toggleSupp = (s: Supplement) => {
-    const next = supplements.includes(s)
-      ? supplements.filter((x) => x !== s)
-      : [...supplements, s]
-    updateSessionMeta(session.id, {
-      supplements: next.length ? next : undefined,
-    })
-  }
-
-  const hasSummary = summary(session).length > 0
 
   return (
     <div className="overflow-hidden rounded-2xl border border-hair bg-white/[0.02]">
@@ -85,10 +42,10 @@ export function SessionMeta({ session }: { session: Session }) {
       >
         <MapPin size={16} className="shrink-0 text-sky-400" />
         <span className="flex-1 truncate text-sm">
-          {hasSummary ? (
-            <span className="font-medium text-ink-2">{summary(session)}</span>
+          {session.location ? (
+            <span className="font-medium text-ink-2">{session.location}</span>
           ) : (
-            <span className="text-ink-3">Add location, form, notes…</span>
+            <span className="text-ink-3">Add location…</span>
           )}
         </span>
         <ChevronDown
@@ -98,107 +55,54 @@ export function SessionMeta({ session }: { session: Session }) {
       </button>
 
       {open && (
-        <div className="space-y-5 border-t border-hair px-4 pt-4 pb-4">
-          {/* Location */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="eyebrow">Location</span>
-              <button
-                onClick={useMyLocation}
-                disabled={geo === 'locating'}
-                className="flex items-center gap-1 text-xs font-semibold text-sky-400 active:text-sky-300 disabled:opacity-50"
-              >
-                <LocateFixed
-                  size={13}
-                  className={geo === 'locating' ? 'animate-pulse' : ''}
-                />
-                {geo === 'locating'
-                  ? 'Locating…'
-                  : geo === 'denied'
-                    ? 'Permission denied'
-                    : geo === 'unavailable'
-                      ? 'Unavailable'
-                      : 'Use my location'}
-              </button>
-            </div>
-            <input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              onBlur={(e) => commitLocation(e.target.value)}
-              placeholder="City, IATA code, or casa…"
-              className="w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none transition focus:border-sky-400/60"
-            />
-            {recent.length > 0 && (
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {recent.map((loc) => (
-                  <button
-                    key={loc}
-                    onClick={() => {
-                      setLocation(loc)
-                      commitLocation(loc)
-                    }}
-                    className={`press rounded-full border px-3 py-1 text-xs font-medium ${
-                      location === loc
-                        ? 'border-sky-400/50 bg-sky-400/15 text-sky-300'
-                        : 'border-hair bg-white/[0.04] text-ink-3'
-                    }`}
-                  >
-                    {loc}
-                  </button>
-                ))}
-              </div>
-            )}
+        <div className="border-t border-hair px-4 pt-4 pb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="eyebrow">Location</span>
+            <button
+              onClick={useMyLocation}
+              disabled={geo === 'locating'}
+              className="flex items-center gap-1 text-xs font-semibold text-sky-400 active:text-sky-300 disabled:opacity-50"
+            >
+              <LocateFixed
+                size={13}
+                className={geo === 'locating' ? 'animate-pulse' : ''}
+              />
+              {geo === 'locating'
+                ? 'Locating…'
+                : geo === 'denied'
+                  ? 'Permission denied'
+                  : geo === 'unavailable'
+                    ? 'Unavailable'
+                    : 'Use my location'}
+            </button>
           </div>
-
-          {/* Form 1-10 */}
-          <div>
-            <div className="eyebrow mb-2">Form · 1–10</div>
-            <div className="grid grid-cols-10 gap-1.5">
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            onBlur={(e) => commitLocation(e.target.value)}
+            placeholder="City, IATA code, or casa…"
+            className="w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none transition focus:border-sky-400/60"
+          />
+          {recent.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {recent.map((loc) => (
                 <button
-                  key={n}
-                  onClick={() => setForm(form === n ? null : n)}
-                  className={`nums press flex aspect-square items-center justify-center rounded-xl border text-sm font-bold ${
-                    form === n
-                      ? 'border-[#37e29a]/60 bg-[#37e29a]/20 text-[#37e29a]'
+                  key={loc}
+                  onClick={() => {
+                    setLocation(loc)
+                    commitLocation(loc)
+                  }}
+                  className={`press rounded-full border px-3 py-1 text-xs font-medium ${
+                    location === loc
+                      ? 'border-sky-400/50 bg-sky-400/15 text-sky-300'
                       : 'border-hair bg-white/[0.04] text-ink-3'
                   }`}
                 >
-                  {n}
+                  {loc}
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Supplements */}
-          <div>
-            <div className="eyebrow mb-2">Supplements</div>
-            <div className="flex flex-wrap gap-1.5">
-              {SUPPLEMENTS.map((s) => (
-                <Chip
-                  key={s}
-                  active={supplements.includes(s)}
-                  tone="sky"
-                  onClick={() => toggleSupp(s)}
-                >
-                  {SUPP_LABEL[s]}
-                </Chip>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <div className="eyebrow mb-2">Notes</div>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={(e) => commitNotes(e.target.value)}
-              rows={2}
-              placeholder="Caldo, stanco, dolore schiena…"
-              className="w-full resize-none rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none transition focus:border-sky-400/60"
-            />
-          </div>
+          )}
         </div>
       )}
     </div>
