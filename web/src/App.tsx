@@ -20,6 +20,7 @@ import {
   needsHistorySeed,
   seedHistory,
   seedHistoryMeta,
+  skipHistorySeed,
 } from './db'
 import { useSync } from './sync/useSync'
 import { cachedAccount, googleActive } from './sync/googleAuth'
@@ -48,6 +49,9 @@ export default function App() {
   const [view, setView] = useState<View>('home')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [importPct, setImportPct] = useState<number | null>(null)
+  // First-run choice on a fresh device: import the 7-year history, or start
+  // blank (a second person on their own device). null once decided/not needed.
+  const [firstRun, setFirstRun] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
   const [showMixer, setShowMixer] = useState(false)
   const [, bumpAccount] = useState(0)
@@ -73,20 +77,35 @@ export default function App() {
     void (async () => {
       await ensureSeeded()
       if (await needsHistorySeed()) {
-        setImportPct(0)
-        try {
-          await seedHistory((done, total) =>
-            setImportPct(Math.round((done / total) * 100)),
-          )
-        } finally {
-          setImportPct(null)
-        }
+        // Fresh device: let the person choose history vs. a blank logbook.
+        setFirstRun(true)
       } else {
         // Backfill location/form/notes/supplements onto a pre-existing import.
         await seedHistoryMeta()
       }
     })()
   }, [])
+
+  async function importHistory() {
+    setFirstRun(false)
+    setImportPct(0)
+    try {
+      await seedHistory((done, total) =>
+        setImportPct(Math.round((done / total) * 100)),
+      )
+    } finally {
+      setImportPct(null)
+    }
+  }
+
+  async function startFresh() {
+    await skipHistorySeed()
+    setFirstRun(false)
+  }
+
+  if (firstRun) {
+    return <FirstRun onImport={importHistory} onFresh={startFresh} />
+  }
 
   if (showAccount) {
     return (
@@ -218,6 +237,53 @@ export default function App() {
       </main>
 
       <NavBar view={view} setView={setView} />
+    </div>
+  )
+}
+
+/*
+ * First-run setup, shown once on a device with no data yet. Lets each person
+ * choose to import the owner's 7-year history or begin with a blank logbook —
+ * so a second person (e.g. a partner) installing the same app can start empty.
+ */
+function FirstRun({
+  onImport,
+  onFresh,
+}: {
+  onImport: () => void
+  onFresh: () => void
+}) {
+  return (
+    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-10">
+      <img
+        src="/header-banner.png"
+        alt="P90X Workout Logger"
+        className="mx-auto mb-9 w-full max-w-xs select-none"
+      />
+      <h1 className="display text-center text-2xl">Set up your logbook</h1>
+      <p className="mt-2 text-center text-[15px] text-ink-3">
+        Pick how to start on this device.
+      </p>
+      <div className="mt-8 space-y-3">
+        <button
+          onClick={onImport}
+          className="press card w-full px-5 py-4 text-left"
+        >
+          <span className="block font-semibold text-ink">Load my history</span>
+          <span className="mt-0.5 block text-[13px] text-ink-3">
+            Import the full 7-year P90X archive to log and chart on top of it.
+          </span>
+        </button>
+        <button
+          onClick={onFresh}
+          className="press card w-full px-5 py-4 text-left"
+        >
+          <span className="block font-semibold text-ink">Start fresh</span>
+          <span className="mt-0.5 block text-[13px] text-ink-3">
+            A blank logbook — begin from today. Best for a second person.
+          </span>
+        </button>
+      </div>
     </div>
   )
 }

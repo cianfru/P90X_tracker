@@ -7,10 +7,14 @@
  * backup/restore. The app works fully without a Client ID configured.
  */
 
-// Sheets (read/write the logbook) + drive.file (find/create only the files this
-// app makes) + identity. drive.file keeps us out of the rest of your Drive.
+// drive.file (find/create/read/write ONLY the files this app makes) + identity.
+// The Sheets API accepts a drive.file token for app-created spreadsheets, so we
+// don't need the broad, "sensitive" spreadsheets scope — which is what made
+// Google show the "unverified app" warning. drive.file is non-sensitive, so the
+// warning goes away with no verification needed, and the app can't touch any of
+// your other Drive files.
 const SCOPE =
-  'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file openid email profile'
+  'https://www.googleapis.com/auth/drive.file openid email profile'
 
 const CLIENT_ID_KEY = 'p90x-google-client-id'
 const ACCOUNT_KEY = 'p90x-google-account'

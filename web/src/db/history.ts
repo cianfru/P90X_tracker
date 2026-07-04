@@ -52,6 +52,29 @@ export async function needsHistorySeed(): Promise<boolean> {
   return !sessions.some((s) => s.deviceId !== IMPORT_DEVICE)
 }
 
+/**
+ * Choose to START FRESH instead of importing the bundled history (a blank
+ * logbook — e.g. a second person on their own device). Marks the import as
+ * "done" so it never runs, and clears any rows left by an interrupted import so
+ * the logbook is genuinely empty. User-logged rows are never touched.
+ */
+export async function skipHistorySeed(): Promise<void> {
+  const all = await db.sessions.toArray()
+  const importedIds = all
+    .filter((s) => s.deviceId === IMPORT_DEVICE)
+    .map((s) => s.id)
+  if (importedIds.length) {
+    await db.transaction('rw', db.sessions, db.sets, async () => {
+      for (const id of importedIds) {
+        await db.sets.where('sessionId').equals(id).delete()
+      }
+      await db.sessions.bulkDelete(importedIds)
+    })
+  }
+  localStorage.setItem(FLAG, '1')
+  localStorage.setItem(META_FLAG, '1')
+}
+
 /** Import the bundled history in chunks. Returns sessions seeded (0 if skipped). */
 export async function seedHistory(
   onProgress?: (done: number, total: number) => void,
