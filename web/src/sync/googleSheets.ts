@@ -1,5 +1,13 @@
 import { db } from '../db'
-import type { Modifier, Session, Supplement, WorkoutSet } from '../db'
+import type {
+  Exercise,
+  Modifier,
+  Session,
+  Supplement,
+  WorkoutSet,
+  WorkoutTemplate,
+} from '../db'
+import { MODIFIER_META } from '../db'
 import { cachedAccount, getAccessToken } from './googleAuth'
 
 /*
@@ -58,6 +66,30 @@ const jsonArr = <T>(v: unknown): T[] => {
     return []
   }
 }
+
+// ---- readable view (one tab per workout, exercises × dates) ----
+// A WRITE-ONLY projection so the sheet reads like the original xlsx. The app
+// never reads these tabs back — `sessions`/`sets` stay the source of truth.
+const MIXER_KEY = '__mixer'
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const fmtDay = (iso: string): string => {
+  const [y, m, d] = iso.split('-')
+  return `${d} ${MON[Number(m) - 1] ?? m} ${y.slice(2)}`
+}
+// Sheet tab names can't contain []:*?/\ and cap at 100 chars.
+const sanitizeTab = (name: string): string =>
+  name.replace(/[[\]:*?/\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90) || 'Workout'
+/** A single logged set as a cell value, e.g. "12", "10×40", "15(L)🔥". */
+const fmtCellSet = (s: WorkoutSet): string => {
+  const base = s.weightKg != null ? `${s.reps}×${s.weightKg}` : `${s.reps}`
+  const mods = s.modifiers.map((m) => MODIFIER_META[m]?.label ?? m).join(',')
+  return base + (mods ? `(${mods})` : '') + (s.struggle ? '🔥' : '')
+}
+// Group sessions into one tab per workout; every Mixer remix collapses to one.
+const groupKeyOf = (s: Session, tplById: Map<string, WorkoutTemplate>): string =>
+  tplById.get(s.workoutId)?.program === 'Mixer' ? MIXER_KEY : s.workoutId
+const groupTitle = (key: string, tplById: Map<string, WorkoutTemplate>): string =>
+  key === MIXER_KEY ? 'Mixer' : sanitizeTab(tplById.get(key)?.name ?? key)
 
 const sessionToRow = (s: Session): string[] => [
   s.id, s.date, s.workoutId, s.deviceId, String(s.createdAt),
@@ -185,10 +217,11 @@ async function readRows(
 const CHUNK = 2000
 const rowKey = (tab: string) => `gsheet-rows-${tab}`
 
-/** Push queued (or all) local rows to the sheet as appended rows. */
-async function pushOutbox(id: string): Promise<void> {
+/** Push queued (or all) local rows to the sheet; returns the workout group keys
+ *  touched so the readable view can rewrite just those tabs. */
+async function pushOutbox(id: string): Promise<Set<string>> {
   const entries = await db.outbox.toArray()
-  if (!entries.length) return
+  if (!entries.length) return new Set()
   const sessionIds = entries.filter((e) => e.table === 'sessions').map((e) => e.rowId)
   const setIds = entries.filter((e) => e.table === 'sets').map((e) => e.rowId)
   const sessions = (await db.sessions.bulkGet(sessionIds)).filter(Boolean) as Session[]
@@ -196,6 +229,14 @@ async function pushOutbox(id: string): Promise<void> {
   if (sessions.length) await appendRows(id, SESSIONS, sessions.map(sessionToRow))
   if (sets.length) await appendRows(id, SETS, sets.map(setToRow))
   await db.outbox.bulkDelete(entries.map((e) => e.key))
+
+  const templates = await db.templates.toArray()
+  const tplById = new Map(templates.map((t) => [t.id, t]))
+  const setSessIds = [...new Set(sets.map((s) => s.sessionId))]
+  const setSessions = (await db.sessions.bulkGet(setSessIds)).filter(Boolean) as Session[]
+  const touched = new Set<string>()
+  for (const s of [...sessions, ...setSessions]) touched.add(groupKeyOf(s, tplById))
+  return touched
 }
 
 async function clearData(id: string, tab: string): Promise<void> {
@@ -226,6 +267,116 @@ export async function pushAll(
   await db.meta.put({ key: rowKey(SESSIONS), value: sessions.length + 1 })
   await db.meta.put({ key: rowKey(SETS), value: sets.length + 1 })
   markMigrationDone()
+  // Rebuild the whole human-readable view (best-effort; never fail the backup).
+  try {
+    await rebuildReadable(id)
+  } catch {
+    /* readable view is a convenience projection, not the source of truth */
+  }
+}
+
+// ---- readable per-workout tabs (write-only) ----
+async function getTabTitles(id: string): Promise<Set<string>> {
+  const j = await api<{ sheets: { properties: { title: string } }[] }>(
+    `${SHEETS_API}/${id}?fields=sheets.properties.title`,
+  )
+  return new Set((j.sheets ?? []).map((s) => s.properties.title))
+}
+
+async function addTab(id: string, title: string): Promise<void> {
+  await api(`${SHEETS_API}/${id}:batchUpdate`, {
+    method: 'POST',
+    body: JSON.stringify({ requests: [{ addSheet: { properties: { title } } }] }),
+  })
+}
+
+async function writeMatrix(id: string, tab: string, values: string[][]): Promise<void> {
+  await api(
+    `${SHEETS_API}/${id}/values/${encodeURIComponent(`${tab}!A1`)}?valueInputOption=RAW`,
+    { method: 'PUT', body: JSON.stringify({ values }) },
+  )
+}
+
+interface Grp {
+  exOrder: string[]
+  dates: Set<string>
+  cells: Map<string, Map<string, WorkoutSet[]>> // exId -> date -> sets
+}
+
+/**
+ * Regenerate the readable, one-tab-per-workout view: exercises down column A,
+ * dates across row 1, cells showing reps (and ×kg / modifiers) — like the
+ * original spreadsheet. WRITE-ONLY. Pass `onlyKeys` to rewrite just the
+ * workouts that changed (incremental sync); omit it for a full rebuild.
+ */
+export async function rebuildReadable(
+  id: string,
+  onlyKeys?: Set<string>,
+): Promise<void> {
+  const [sessions, sets, exercises, templates] = await Promise.all([
+    db.sessions.toArray(),
+    db.sets.toArray(),
+    db.exercises.toArray(),
+    db.templates.toArray(),
+  ])
+  const exById = new Map(exercises.map((e) => [e.id, e] as const))
+  const tplById = new Map(templates.map((t) => [t.id, t] as const))
+  const sessById = new Map(sessions.map((s) => [s.id, s] as const))
+
+  const groups = new Map<string, Grp>()
+  const ensure = (key: string): Grp => {
+    let g = groups.get(key)
+    if (!g) {
+      const tpl = key === MIXER_KEY ? undefined : tplById.get(key)
+      g = { exOrder: tpl ? [...tpl.exerciseIds] : [], dates: new Set(), cells: new Map() }
+      groups.set(key, g)
+    }
+    return g
+  }
+
+  for (const st of sets) {
+    if (st.deleted) continue
+    const sess = sessById.get(st.sessionId)
+    if (!sess || sess.deleted) continue
+    const g = ensure(groupKeyOf(sess, tplById))
+    g.dates.add(sess.date)
+    if (!g.exOrder.includes(st.exerciseId)) g.exOrder.push(st.exerciseId)
+    let byDate = g.cells.get(st.exerciseId)
+    if (!byDate) g.cells.set(st.exerciseId, (byDate = new Map()))
+    const arr = byDate.get(sess.date) ?? []
+    arr.push(st)
+    byDate.set(sess.date, arr)
+  }
+
+  const titles = await getTabTitles(id)
+  for (const [key, g] of groups) {
+    if (onlyKeys && !onlyKeys.has(key)) continue
+    const rowIds = g.exOrder.filter((exId) => g.cells.has(exId))
+    if (!rowIds.length) continue
+    const dates = [...g.dates].sort()
+    const matrix: string[][] = [['Exercise', ...dates.map(fmtDay)]]
+    for (const exId of rowIds) {
+      const ex: Exercise | undefined = exById.get(exId)
+      const byDate = g.cells.get(exId)!
+      matrix.push([
+        ex?.displayName ?? ex?.name ?? exId,
+        ...dates.map((d) => {
+          const arr = byDate.get(d)
+          if (!arr?.length) return ''
+          return [...arr].sort((a, z) => a.round - z.round).map(fmtCellSet).join(', ')
+        }),
+      ])
+    }
+    const title = groupTitle(key, tplById)
+    if (!titles.has(title)) {
+      await addTab(id, title)
+      titles.add(title)
+    }
+    await api(`${SHEETS_API}/${id}/values/${encodeURIComponent(`${title}!A:ZZ`)}:clear`, {
+      method: 'POST',
+    })
+    await writeMatrix(id, title, matrix)
+  }
 }
 
 /** Pull rows appended since our cursor and upsert them into Dexie. */
@@ -262,9 +413,17 @@ export async function syncGoogle(): Promise<{
   running = true
   try {
     const { id } = await ensureSpreadsheet()
-    await pushOutbox(id)
+    const touched = await pushOutbox(id)
     const pulled = await pullNew(id)
     await db.meta.put({ key: 'lastSyncAt', value: Date.now() })
+    // Refresh only the readable tabs for the workouts we just pushed.
+    if (touched.size) {
+      try {
+        await rebuildReadable(id, touched)
+      } catch {
+        /* best-effort convenience view */
+      }
+    }
     return { ok: true, pulled }
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) }
