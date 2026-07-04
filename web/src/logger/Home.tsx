@@ -229,7 +229,7 @@ export function Home({
       <button
         onClick={onMix}
         aria-label="Mix a workout"
-        className="press mt-3 block w-full overflow-hidden rounded-2xl border border-[#c6f24a]/25 bg-black/30"
+        className="press mix-glow mt-3 block w-full overflow-hidden rounded-2xl border border-[#c6f24a]/35 bg-black/30"
       >
         <img
           src="/mix-banner.png"

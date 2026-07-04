@@ -156,6 +156,33 @@ body::before {
   }
 }
 
+/* Hype glow for the Mix-a-workout banner — a soft fluo-lime neon that gently
+   breathes, for character without being loud. */
+@keyframes mixGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 16px -2px rgba(198, 242, 74, 0.3),
+      0 0 46px -12px rgba(198, 242, 74, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 26px 0 rgba(198, 242, 74, 0.52),
+      0 0 68px -8px rgba(198, 242, 74, 0.36);
+  }
+}
+.mix-glow {
+  animation: mixGlow 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mix-glow {
+    animation: none;
+    box-shadow:
+      0 0 20px -2px rgba(198, 242, 74, 0.4),
+      0 0 52px -10px rgba(198, 242, 74, 0.28);
+  }
+}
+
 /* Springy press feedback used across tappable cards/buttons. */
 .press {
   transition:
