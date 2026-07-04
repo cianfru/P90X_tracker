@@ -11,6 +11,7 @@ import { Recap } from './Recap'
 import { SessionMeta } from './SessionMeta'
 import { SessionFinish } from './SessionFinish'
 import { Stat } from './ui'
+import { useSwipeBack } from '../lib/gestures'
 
 /*
  * Session — the gym screen. "Log & next" advances through the routine in
@@ -66,6 +67,14 @@ export function Session({
   const accent = programAccent(template?.program)
   // Aura recalls this workout's program while the session is open.
   useEffect(() => setAura(auraFor(template?.program)), [template?.program])
+
+  // Edge-swipe steps back through the finish → recap → session stack, then exits.
+  const back = () => {
+    if (showRecap) setShowRecap(false)
+    else if (finishing) setFinishing(false)
+    else onBack()
+  }
+  useSwipeBack(back)
 
   // Capture GPS once, when a workout is freshly started on this device.
   const triedGeo = useRef(false)

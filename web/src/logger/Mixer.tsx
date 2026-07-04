@@ -5,6 +5,7 @@ import { db } from '../db'
 import type { Exercise } from '../db'
 import { startOrResumeSession } from '../db/repo'
 import { auraFor, setAura } from './programColor'
+import { useSwipeBack } from '../lib/gestures'
 import {
   baseCandidates,
   exerciseStatsMap,
@@ -71,6 +72,7 @@ export function Mixer({
 
   // The Mixer's aura is its fluo pink.
   useEffect(() => setAura(auraFor('Mixer')), [])
+  useSwipeBack(onBack)
 
   const exById = useMemo(
     () => new Map((exercises ?? []).map((e) => [e.id, e] as const)),

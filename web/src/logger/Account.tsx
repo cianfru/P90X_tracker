@@ -12,6 +12,7 @@ import {
 import { db } from '../db'
 import { getBodyweight, setBodyweight } from './effort'
 import { AURA_DEFAULT, setAura } from './programColor'
+import { useSwipeBack } from '../lib/gestures'
 import {
   cachedAccount,
   googleClientId,
@@ -52,6 +53,7 @@ export function Account({
   const [choose, setChoose] = useState<{ id: string; count: number } | null>(null)
   const [bw, setBw] = useState(getBodyweight())
   useEffect(() => setAura(AURA_DEFAULT), [])
+  useSwipeBack(onBack)
 
   const configured = googleConfigured()
 

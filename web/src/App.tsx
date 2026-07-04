@@ -13,6 +13,7 @@ import {
   Wifi,
 } from 'lucide-react'
 import { useOnlineStatus } from './lib/useOnlineStatus'
+import { PullToRefresh } from './lib/gestures'
 import { ensureSeeded, needsHistorySeed, seedHistory, seedHistoryMeta } from './db'
 import { useSync } from './sync/useSync'
 import { cachedAccount, googleActive } from './sync/googleAuth'
@@ -181,7 +182,9 @@ export default function App() {
 
       <main className="flex-1 px-4 pb-32">
         {view === 'home' ? (
-          <Home onOpen={setSessionId} onMix={() => setShowMixer(true)} />
+          <PullToRefresh onRefresh={() => window.location.reload()}>
+            <Home onOpen={setSessionId} onMix={() => setShowMixer(true)} />
+          </PullToRefresh>
         ) : (
           <Suspense
             fallback={

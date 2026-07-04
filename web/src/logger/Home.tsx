@@ -7,6 +7,7 @@ import { startOrResumeSession } from '../db/repo'
 import { auraFor, programAccent, setAura } from './programColor'
 import { todayISO } from '../lib/id'
 import { Label } from './ui'
+import { useSwipeBack } from '../lib/gestures'
 
 /*
  * Home — pure workout picker: first pick a program (P90X / P90X2 / P90X3 /
@@ -46,6 +47,8 @@ export function Home({
   const [programId, setProgramId] = useState<Program | null>(null)
   // Paint the aura the selected program's colour (green on the main list).
   useEffect(() => setAura(auraFor(programId)), [programId])
+  // Edge-swipe from a program's workout list back to the program picker.
+  useSwipeBack(() => setProgramId(null), programId !== null)
   const program = programId
     ? { id: programId, accent: programAccent(programId) }
     : null

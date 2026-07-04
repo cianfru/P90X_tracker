@@ -4,6 +4,7 @@ import { db } from '../db'
 import { MODIFIER_META } from '../db'
 import { templateExercises } from '../db/repo'
 import { fmtDate } from '../lib/id'
+import { useSwipeBack } from '../lib/gestures'
 import { intensityColor, intensityLabel } from './intensity'
 
 /*
@@ -29,6 +30,7 @@ export function SessionDetail({
   score?: number
   onBack: () => void
 }) {
+  useSwipeBack(onBack)
   const data = useLiveQuery(async () => {
     const session = await db.sessions.get(sessionId)
     if (!session) return null
