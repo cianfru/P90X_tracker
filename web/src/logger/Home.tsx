@@ -234,7 +234,7 @@ export function Home({
         <img
           src="/mix-banner.png"
           alt="Mix a workout"
-          className="w-full select-none"
+          className="block h-[88px] w-full select-none object-cover"
         />
       </button>
     </div>
