@@ -17,6 +17,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // We register the service worker ourselves (main.tsx) so we can poll for
+      // new deploys on every foreground — iOS PWAs won't check on their own.
+      injectRegister: false,
       includeAssets: ['apple-touch-icon.png', 'favicon.png'],
       manifest: {
         id: '/',
