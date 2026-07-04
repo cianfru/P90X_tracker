@@ -3,18 +3,24 @@ import {
   Activity,
   CalendarDays,
   Cloud,
+  CloudOff,
   Dumbbell,
   LineChart,
   Loader2,
   Map as MapIcon,
   RefreshCw,
   UserRound,
-  WifiOff,
-  Wifi,
 } from 'lucide-react'
-import { useOnlineStatus } from './lib/useOnlineStatus'
 import { PullToRefresh } from './lib/gestures'
-import { ensureSeeded, needsHistorySeed, seedHistory, seedHistoryMeta } from './db'
+import { fmtAgo } from './lib/id'
+import { useLiveQuery } from 'dexie-react-hooks'
+import {
+  db,
+  ensureSeeded,
+  needsHistorySeed,
+  seedHistory,
+  seedHistoryMeta,
+} from './db'
 import { useSync } from './sync/useSync'
 import { cachedAccount, googleActive } from './sync/googleAuth'
 import { migrationDone } from './sync/googleSheets'
@@ -55,11 +61,13 @@ export default function App() {
       clearTimeout(t2)
     }
   }, [])
-  const online = useOnlineStatus()
   const gActive = googleActive()
   const syncState = useSync() // no-ops while Google is the active backend
   // Auto-sync only after the account's first-run migration choice is done.
   const gSync = useGoogleSync(gActive && migrationDone())
+  const lastSyncAt = useLiveQuery(
+    async () => (await db.meta.get('lastSyncAt'))?.value as number | undefined,
+  )
 
   useEffect(() => {
     void (async () => {
@@ -144,22 +152,33 @@ export default function App() {
               {importPct}%
             </span>
           ) : gActive ? (
-            <span
-              className="flex items-center gap-1.5 rounded-full border border-[#34f5a0]/30 bg-[#34f5a0]/10 px-3 py-1.5 text-xs font-semibold text-[#34f5a0]"
-              title={
+            <button
+              onClick={() => setShowAccount(true)}
+              title="Backup status — tap to manage"
+              className={`nums press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${
                 gSync.pending > 0
-                  ? `${gSync.pending} change(s) pending backup`
-                  : 'Backed up to Google Sheets'
-              }
+                  ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
+                  : 'border-[#34f5a0]/30 bg-[#34f5a0]/10 text-[#34f5a0]'
+              }`}
             >
               <Cloud
                 size={13}
                 className={gSync.syncing ? 'animate-pulse' : ''}
               />
-              {gSync.pending > 0 ? gSync.pending : 'Synced'}
-            </span>
+              {gSync.pending > 0
+                ? `Backing up ${gSync.pending}`
+                : lastSyncAt
+                  ? fmtAgo(lastSyncAt)
+                  : 'Backed up'}
+            </button>
           ) : (
-            <ConnPill online={online} />
+            <button
+              onClick={() => setShowAccount(true)}
+              title="Not backing up — tap to connect Google and protect your data"
+              className="press flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-amber-300"
+            >
+              <CloudOff size={13} /> Not backed up
+            </button>
           )}
           <button
             onClick={() => setShowAccount(true)}
@@ -220,22 +239,6 @@ function Splash({ fading }: { fading: boolean }) {
         className="w-full max-w-sm animate-[splashIn_0.6s_ease-out] select-none"
       />
     </div>
-  )
-}
-
-function ConnPill({ online }: { online: boolean }) {
-  return (
-    <span
-      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-        online
-          ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
-          : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
-      }`}
-      title={online ? 'Online — will sync' : 'Offline — logging locally'}
-    >
-      {online ? <Wifi size={13} /> : <WifiOff size={13} />}
-      {online ? 'Online' : 'Offline'}
-    </span>
   )
 }
 

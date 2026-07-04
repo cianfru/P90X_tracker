@@ -266,6 +266,7 @@ export async function pushAll(
   await db.outbox.clear()
   await db.meta.put({ key: rowKey(SESSIONS), value: sessions.length + 1 })
   await db.meta.put({ key: rowKey(SETS), value: sets.length + 1 })
+  await db.meta.put({ key: 'lastSyncAt', value: Date.now() })
   markMigrationDone()
   // Rebuild the whole human-readable view (best-effort; never fail the backup).
   try {

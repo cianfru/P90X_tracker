@@ -9,10 +9,12 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { getBodyweight, setBodyweight } from './effort'
 import { AURA_DEFAULT, setAura } from './programColor'
 import { useSwipeBack } from '../lib/gestures'
+import { fmtAgo } from '../lib/id'
 import {
   cachedAccount,
   googleClientId,
@@ -52,6 +54,9 @@ export function Account({
   const [error, setError] = useState<string | null>(null)
   const [choose, setChoose] = useState<{ id: string; count: number } | null>(null)
   const [bw, setBw] = useState(getBodyweight())
+  const lastSyncAt = useLiveQuery(
+    async () => (await db.meta.get('lastSyncAt'))?.value as number | undefined,
+  )
   useEffect(() => setAura(AURA_DEFAULT), [])
   useSwipeBack(onBack)
 
@@ -331,9 +336,13 @@ export function Account({
               ? `Backing up… ${pct ?? 0}%`
               : 'Back up all my data now'}
           </button>
-          <p className="mt-1.5 text-[12px] text-ink-3">
-            Uploads everything on this device to your Sheet. Use once if your
-            history didn't upload the first time.
+          <p className="mt-1.5 flex items-center justify-between text-[12px] text-ink-3">
+            <span>Uploads everything on this device to your Sheet.</span>
+            {lastSyncAt && (
+              <span className="shrink-0 font-semibold text-[#34f5a0]">
+                Last backed up {fmtAgo(lastSyncAt)}
+              </span>
+            )}
           </p>
         </div>
       )}
