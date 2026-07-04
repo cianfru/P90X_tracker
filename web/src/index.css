@@ -36,10 +36,12 @@ body,
   height: 100%;
 }
 
-/* Solid canvas everywhere so no black seam shows through in the iPhone safe
-   areas (iOS never leaves an un-painted strip to fall back to black). */
-html,
-body {
+/* Solid canvas ONLY on <html> — it propagates to the viewport (incl. the iPhone
+   safe areas, so no black seam shows there). Do NOT put it on <body> too: a
+   solid body background paints OVER the body::before aura (which sits at
+   z-index:-1), hiding the glow entirely. Leaving body transparent lets the aura
+   show through against the html canvas behind it. */
+html {
   background-color: var(--color-canvas);
 }
 
@@ -74,13 +76,9 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  /* Force the aura onto its own GPU layer. Without this, another element
-     running a continuous animation (the Mix button's glow) makes iOS/mobile
-     Safari drop this fixed layer and repaint it BLACK. Isolating the layer
-     keeps the aura stable regardless of what animates on top of it. */
+  /* Own GPU layer — cheap isolation so nothing animating on top can force a
+     repaint that flickers the aura on mobile. */
   transform: translateZ(0);
-  backface-visibility: hidden;
-  will-change: transform;
   background:
     radial-gradient(
       155% 100% at 50% 116%,
