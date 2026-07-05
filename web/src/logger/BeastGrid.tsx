@@ -89,9 +89,11 @@ export function BeastGrid({
                             style={
                               s
                                 ? {
-                                    borderColor: `${accent}80`,
-                                    background: `${accent}1f`,
-                                    color: accent,
+                                    // Logged = solid accent fill: an unmistakable
+                                    // "this set is done" cue across the group.
+                                    borderColor: accent,
+                                    background: accent,
+                                    color: '#06140d',
                                   }
                                 : { borderColor: 'var(--color-hair)' }
                             }
