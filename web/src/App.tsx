@@ -8,7 +8,6 @@ import {
   LineChart,
   Loader2,
   Map as MapIcon,
-  RefreshCw,
   UserRound,
 } from 'lucide-react'
 import { PullToRefresh } from './lib/gestures'
@@ -23,6 +22,7 @@ import {
   skipHistorySeed,
 } from './db'
 import { useSync } from './sync/useSync'
+import { syncEnabled } from './sync/syncClient'
 import { cachedAccount, googleActive } from './sync/googleAuth'
 import { migrationDone } from './sync/googleSheets'
 import { useGoogleSync } from './sync/useGoogleSync'
@@ -65,9 +65,11 @@ export default function App() {
       clearTimeout(t2)
     }
   }, [])
-  const gActive = googleActive()
-  const syncState = useSync() // no-ops while Google is the active backend
-  // Auto-sync only after the account's first-run migration choice is done.
+  // A custom sync server (Postgres) takes precedence over Google when connected.
+  const serverActive = syncEnabled()
+  const gActive = googleActive() && !serverActive
+  const syncState = useSync() // active when a custom server is configured
+  // Auto-sync Google only when it's the active backend and first-run is done.
   const gSync = useGoogleSync(gActive && migrationDone())
   const lastSyncAt = useLiveQuery(
     async () => (await db.meta.get('lastSyncAt'))?.value as number | undefined,
@@ -146,30 +148,31 @@ export default function App() {
           className="h-16 w-auto shrink-0 select-none"
         />
         <div className="flex items-center gap-2">
-          {!gActive &&
-            syncState.enabled &&
-            importPct === null &&
-            (syncState.syncing || syncState.pending > 0) && (
-              <span
-                className="nums flex items-center gap-1 text-xs text-ink-3"
-                title={
-                  syncState.pending > 0
-                    ? `${syncState.pending} change(s) pending sync`
-                    : 'syncing'
-                }
-              >
-                <RefreshCw
-                  size={12}
-                  className={syncState.syncing ? 'animate-spin' : ''}
-                />
-                {syncState.pending > 0 ? syncState.pending : ''}
-              </span>
-            )}
           {importPct !== null ? (
             <span className="nums flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-300">
               <Loader2 size={13} className="animate-spin" />
               {importPct}%
             </span>
+          ) : serverActive ? (
+            <button
+              onClick={() => setShowAccount(true)}
+              title="Sync status — tap to manage"
+              className={`nums press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${
+                syncState.pending > 0
+                  ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
+                  : 'border-[#34f5a0]/30 bg-[#34f5a0]/10 text-[#34f5a0]'
+              }`}
+            >
+              <Cloud
+                size={13}
+                className={syncState.syncing ? 'animate-pulse' : ''}
+              />
+              {syncState.pending > 0
+                ? `Syncing ${syncState.pending}`
+                : lastSyncAt
+                  ? fmtAgo(lastSyncAt)
+                  : 'Synced'}
+            </button>
           ) : gActive ? (
             <button
               onClick={() => setShowAccount(true)}

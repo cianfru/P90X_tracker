@@ -3,10 +3,13 @@ import {
   ChevronLeft,
   Cloud,
   CloudOff,
+  Download,
   LogOut,
   Minus,
   Plus,
+  Plug,
   RefreshCw,
+  Server,
   ShieldCheck,
 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -15,6 +18,16 @@ import { getBodyweight, setBodyweight } from './effort'
 import { AURA_DEFAULT, setAura } from './programColor'
 import { useSwipeBack } from '../lib/gestures'
 import { fmtAgo } from '../lib/id'
+import { exportCsv } from '../lib/csv'
+import {
+  clearSyncConfig,
+  fullPushServer,
+  normalizeConfig,
+  setSyncConfig,
+  sync as runServerSync,
+  syncEnabled,
+  syncServerHost,
+} from '../sync/syncClient'
 import {
   cachedAccount,
   googleClientId,
@@ -57,6 +70,14 @@ export function Account({
   const lastSyncAt = useLiveQuery(
     async () => (await db.meta.get('lastSyncAt'))?.value as number | undefined,
   )
+  // Custom sync server (Postgres) — the alternative to Google Sheets.
+  const [srvUrl, setSrvUrl] = useState('')
+  const [srvToken, setSrvToken] = useState('')
+  const [srvBusy, setSrvBusy] = useState<null | 'connect' | 'sync'>(null)
+  const [srvPct, setSrvPct] = useState<number | null>(null)
+  const [csvMsg, setCsvMsg] = useState<string | null>(null)
+  const serverHost = syncServerHost()
+  const serverOn = syncEnabled()
   useEffect(() => setAura(AURA_DEFAULT), [])
   useSwipeBack(onBack)
 
@@ -167,6 +188,58 @@ export function Account({
     } finally {
       setBusy(null)
       setPct(null)
+    }
+  }
+
+  async function connectServer() {
+    if (!srvUrl.trim() || !srvToken.trim()) return
+    setSrvBusy('connect')
+    setError(null)
+    const cfg = normalizeConfig(srvUrl, srvToken)
+    try {
+      // Push everything on this device up FIRST (idempotent by uuid), using an
+      // explicit config. We only persist the connection — which flips the app's
+      // active backend to this server — AFTER the initial backup succeeds, so a
+      // failed/interrupted connect never leaves the backend half-enabled.
+      await fullPushServer(cfg, (done, total) =>
+        setSrvPct(total ? Math.round((done / total) * 100) : 100),
+      )
+      setSyncConfig(cfg.url, cfg.token)
+      // Then pull once to catch anything another device already sent.
+      await runServerSync()
+      setSrvUrl('')
+      setSrvToken('')
+      onChange()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSrvBusy(null)
+      setSrvPct(null)
+    }
+  }
+
+  async function serverSyncNow() {
+    setSrvBusy('sync')
+    setError(null)
+    const r = await runServerSync()
+    if (!r.ok && r.reason) setError(r.reason)
+    setSrvBusy(null)
+  }
+
+  function disconnectServer() {
+    clearSyncConfig()
+    // Keep local data; just stop syncing to the server.
+    onChange()
+  }
+
+  async function handleExportCsv() {
+    setCsvMsg(null)
+    setError(null)
+    try {
+      const n = await exportCsv()
+      setCsvMsg(`Exported ${n.toLocaleString()} sets`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -356,6 +429,109 @@ export function Account({
           <span className="break-words">{error}</span>
         </div>
       )}
+
+      {/* Sync server (Postgres) — the alternative to Google Sheets. When
+          connected it takes over as the active backend. */}
+      <div className="card mt-4 p-4">
+        <div className="flex items-center gap-2">
+          <Server size={16} className="text-ink-2" />
+          <Label>Sync server</Label>
+        </div>
+        {serverOn ? (
+          <>
+            <p className="mt-2 flex items-center gap-1.5 text-[13px] text-ink-2">
+              <span className="h-2 w-2 rounded-full bg-[#34f5a0]" />
+              Connected to <b className="text-ink">{serverHost}</b>
+            </p>
+            <p className="mt-1 text-[12px] text-ink-3">
+              This is your active backup. Google Sheets is paused while a server
+              is connected.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={serverSyncNow}
+                disabled={srvBusy !== null}
+                className="press flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/[0.06] py-2.5 text-sm font-semibold text-ink disabled:opacity-50"
+              >
+                <RefreshCw
+                  size={16}
+                  className={srvBusy === 'sync' ? 'animate-spin' : ''}
+                />
+                Sync now
+              </button>
+              <button
+                onClick={disconnectServer}
+                disabled={srvBusy !== null}
+                className="press flex items-center justify-center gap-2 rounded-xl border border-hair bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-ink-2 disabled:opacity-50"
+              >
+                <LogOut size={16} /> Disconnect
+              </button>
+            </div>
+            {lastSyncAt && (
+              <p className="mt-2 text-right text-[12px] font-semibold text-[#34f5a0]">
+                Last synced {fmtAgo(lastSyncAt)}
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-[13px] text-ink-2">
+              Back up to your own Postgres server instead of Google. Paste the
+              server URL and your member token.
+            </p>
+            <input
+              value={srvUrl}
+              onChange={(e) => setSrvUrl(e.target.value)}
+              placeholder="https://p90x-api.vercel.app"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="mt-3 w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none focus:border-[#34f5a0]/60"
+            />
+            <input
+              value={srvToken}
+              onChange={(e) => setSrvToken(e.target.value)}
+              placeholder="member token"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="mt-2 w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none focus:border-[#34f5a0]/60"
+            />
+            <button
+              onClick={connectServer}
+              disabled={srvBusy !== null || !srvUrl.trim() || !srvToken.trim()}
+              className="press mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#34f5a0] py-3 text-sm font-bold text-[#06140d] disabled:opacity-40"
+            >
+              {srvBusy === 'connect' ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" />
+                  {srvPct !== null ? `Uploading ${srvPct}%` : 'Connecting…'}
+                </>
+              ) : (
+                <>
+                  <Plug size={16} /> Connect &amp; back up
+                </>
+              )}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Export — works with any backend (reads local data). */}
+      <button
+        onClick={handleExportCsv}
+        className="press card mt-4 flex w-full items-center gap-3 p-4 text-left"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-ink-2">
+          <Download size={17} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">Export CSV</span>
+          <span className="block text-[12px] text-ink-3">
+            {csvMsg ?? 'Download all your workouts as a spreadsheet file.'}
+          </span>
+        </span>
+      </button>
 
       <div className="mt-6 flex items-start gap-2 text-[12px] text-ink-3">
         <Cloud size={14} className="mt-0.5 shrink-0" />

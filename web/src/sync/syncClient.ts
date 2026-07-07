@@ -14,10 +14,16 @@ import type { Modifier, Session, Supplement, WorkoutSet } from '../db'
  * is idempotent).
  */
 
-interface SyncConfig {
+export interface SyncConfig {
   url: string
   token: string
 }
+
+/** Normalize raw URL/token input into a config (without persisting it). */
+export const normalizeConfig = (url: string, token: string): SyncConfig => ({
+  url: url.trim().replace(/\/$/, ''),
+  token: token.trim(),
+})
 
 /** Backend config from localStorage (overrides) or Vite env; null = disabled. */
 export function syncConfig(): SyncConfig | null {
@@ -34,6 +40,26 @@ export function syncConfig(): SyncConfig | null {
 }
 
 export const syncEnabled = (): boolean => syncConfig() !== null
+
+/** Save / clear the custom server connection (URL + member token). */
+export function setSyncConfig(url: string, token: string): void {
+  localStorage.setItem('p90x-sync-url', url.trim().replace(/\/$/, ''))
+  localStorage.setItem('p90x-sync-token', token.trim())
+}
+export function clearSyncConfig(): void {
+  localStorage.removeItem('p90x-sync-url')
+  localStorage.removeItem('p90x-sync-token')
+}
+/** Host of the configured server (for a compact "Connected to …" line). */
+export function syncServerHost(): string | null {
+  const c = syncConfig()
+  if (!c) return null
+  try {
+    return new URL(c.url).host
+  } catch {
+    return c.url
+  }
+}
 
 async function getCursor(): Promise<number> {
   const m = await db.meta.get('syncCursor')
@@ -171,6 +197,57 @@ async function pull(cfg: SyncConfig): Promise<{ sessions: number; sets: number }
   if (sets.length) await db.sets.bulkPut(sets)
   if (typeof data.cursor === 'number') await setCursor(data.cursor)
   return { sessions: sessions.length, sets: sets.length }
+}
+
+/**
+ * First-connect migration: push EVERY local row to the server (not just the
+ * outbox), in chunks, then advance the cursor to the server's max so later
+ * syncs are incremental. Idempotent — the server upserts by uuid — so a retry
+ * after a dropped connection is safe.
+ */
+export async function fullPushServer(
+  cfg: SyncConfig,
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+  const sessions = (await db.sessions.toArray()).map(sessionToWire)
+  const sets = (await db.sets.toArray()).map(setToWire)
+  const total = sessions.length + sets.length
+  let done = 0
+  let cursor = 0
+  const CHUNK = 1500
+
+  const send = async (body: {
+    sessions?: WireSession[]
+    sets?: WireSet[]
+  }): Promise<void> => {
+    const res = await fetch(`${cfg.url}/sync/push`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${cfg.token}`,
+      },
+      body: JSON.stringify({ sessions: [], sets: [], ...body }),
+    })
+    if (!res.ok) throw new Error(`push failed: ${res.status}`)
+    const j = (await res.json()) as { cursor?: number }
+    if (typeof j.cursor === 'number') cursor = Math.max(cursor, j.cursor)
+  }
+
+  for (let i = 0; i < sessions.length; i += CHUNK) {
+    const chunk = sessions.slice(i, i + CHUNK)
+    await send({ sessions: chunk })
+    done += chunk.length
+    onProgress?.(done, total)
+  }
+  for (let i = 0; i < sets.length; i += CHUNK) {
+    const chunk = sets.slice(i, i + CHUNK)
+    await send({ sets: chunk })
+    done += chunk.length
+    onProgress?.(done, total)
+  }
+  await setCursor(cursor)
+  await db.outbox.clear() // everything local is now on the server
+  await db.meta.put({ key: 'lastSyncAt', value: Date.now() })
 }
 
 export interface SyncResult {
