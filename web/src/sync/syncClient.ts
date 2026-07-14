@@ -256,14 +256,21 @@ export interface SyncResult {
   pulled?: { sessions: number; sets: number }
 }
 
-let running = false
+// Guard against overlapping runs, but SELF-HEAL: track when a run started and
+// treat one older than STALE_MS as dead (e.g. a request that hung on a flaky
+// mobile connection and never resolved), so a stuck run can't wedge every
+// future sync on a permanent "busy".
+let runningSince = 0
+const STALE_MS = 90_000
 
 /** Push local changes then pull remote ones. Safe no-op if unconfigured/offline. */
 export async function sync(): Promise<SyncResult> {
   const cfg = syncConfig()
   if (!cfg) return { ok: false, reason: 'not-configured' }
-  if (running) return { ok: false, reason: 'busy' }
-  running = true
+  if (runningSince && Date.now() - runningSince < STALE_MS) {
+    return { ok: false, reason: 'busy' }
+  }
+  runningSince = Date.now()
   try {
     await push(cfg)
     const pulled = await pull(cfg)
@@ -272,6 +279,6 @@ export async function sync(): Promise<SyncResult> {
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) }
   } finally {
-    running = false
+    runningSince = 0
   }
 }

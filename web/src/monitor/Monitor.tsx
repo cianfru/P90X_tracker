@@ -6,7 +6,7 @@ import { AURA_DEFAULT, setAura } from '../logger/programColor'
 import type { Supplement } from '../db'
 import { SUPPLEMENTS } from '../db'
 import { computeAnalytics } from './analytics'
-import { resolveLocation } from './geo'
+import { placeForSession } from './geo'
 import { computeIntensity, type Intensity } from './intensity'
 import { OverviewTab } from './OverviewTab'
 import { MonthTab } from './MonthTab'
@@ -71,12 +71,10 @@ export function Monitor({ tab }: { tab: Tab }) {
         suppDays++
         for (const x of s.supplements) suppCounts[x]++
       }
-      if (s.location) {
-        const r = resolveLocation(s.location)
-        if (r) {
-          placeKeys.add(r.key)
-          located++
-        }
+      const r = placeForSession(s)
+      if (r) {
+        placeKeys.add(r.key)
+        located++
       }
     }
     return { formTrend, suppCounts, suppDays, places: placeKeys.size, located }

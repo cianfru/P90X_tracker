@@ -38,19 +38,28 @@ const DRIVE_API = 'https://www.googleapis.com/drive/v3/files'
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken()
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-  })
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`Sheets API ${res.status}: ${body.slice(0, 200)}`)
+  // Abort a request that hangs (flaky mobile connection) instead of leaving the
+  // sync's in-flight guard stuck forever — the caller then fails cleanly.
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 25_000)
+  try {
+    const res = await fetch(url, {
+      ...init,
+      signal: ctrl.signal,
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`Sheets API ${res.status}: ${body.slice(0, 200)}`)
+    }
+    return (await res.json()) as T
+  } finally {
+    clearTimeout(timer)
   }
-  return (await res.json()) as T
 }
 
 // ---- cell (de)serialisation ----
@@ -442,7 +451,11 @@ async function pullNew(id: string): Promise<{ sessions: number; sets: number }> 
   return { sessions: sVals.length, sets: tVals.length }
 }
 
-let running = false
+// Overlap guard that self-heals: a run older than STALE_MS is treated as dead
+// (a hung request that never resolved), so a stuck sync can't wedge every
+// future backup on a permanent "busy".
+let runningSince = 0
+const STALE_MS = 90_000
 
 /**
  * Full Google sync: ensure sheet, push queued rows, pull new ones. Pass
@@ -456,8 +469,10 @@ export async function syncGoogle(opts?: { full?: boolean }): Promise<{
   pulled?: { sessions: number; sets: number }
 }> {
   if (!cachedAccount()) return { ok: false, reason: 'signed-out' }
-  if (running) return { ok: false, reason: 'busy' }
-  running = true
+  if (runningSince && Date.now() - runningSince < STALE_MS) {
+    return { ok: false, reason: 'busy' }
+  }
+  runningSince = Date.now()
   try {
     const { id } = await ensureSpreadsheet()
     const touched = await pushOutbox(id)
@@ -483,6 +498,6 @@ export async function syncGoogle(opts?: { full?: boolean }): Promise<{
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) }
   } finally {
-    running = false
+    runningSince = 0
   }
 }

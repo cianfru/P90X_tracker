@@ -11,7 +11,7 @@ import { ChevronRight } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
 import type { Session, WorkoutTemplate } from '../db'
 import { fmtDate } from '../lib/id'
-import { resolveLocation } from './geo'
+import { placeForSession } from './geo'
 import {
   INTENSITY_LEGEND,
   type Intensity,
@@ -56,8 +56,8 @@ function aggregate(
 ): PlaceAgg[] {
   const by = new Map<string, PlaceAgg>()
   for (const s of sessions) {
-    if (s.deleted || !s.location) continue
-    const r = resolveLocation(s.location)
+    if (s.deleted) continue
+    const r = placeForSession(s)
     if (!r) continue
     let p = by.get(r.key)
     if (!p) {

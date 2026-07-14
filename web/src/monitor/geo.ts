@@ -6,6 +6,8 @@
  * off the map). Built-in table — no network, works offline.
  */
 
+import type { Session } from '../db'
+
 export interface Place {
   key: string
   name: string
@@ -70,6 +72,7 @@ const PLACES: Record<string, Omit<Place, 'key'>> = {
   calicut: { name: 'Calicut', country: 'India', lat: 11.2588, lon: 75.7804 },
   zanzibar: { name: 'Zanzibar', country: 'Tanzania', lat: -6.1659, lon: 39.2026 },
   palma: { name: 'Palma', country: 'Spain', lat: 39.5696, lon: 2.6502 },
+  nairobi: { name: 'Nairobi', country: 'Kenya', lat: -1.2921, lon: 36.8219 },
 }
 
 // Alias → place key. Covers the historical labels (cities, IATA codes, and
@@ -106,6 +109,7 @@ const ALIAS: Record<string, string> = {
   trv: 'trivandrum', trivandrum: 'trivandrum',
   ccj: 'calicut', calicut: 'calicut',
   znz: 'zanzibar', zanzibar: 'zanzibar',
+  nbo: 'nairobi', nairobi: 'nairobi',
 }
 
 // Words that describe *where within* a place (home, gym, quarantine, a specific
@@ -180,4 +184,31 @@ export function resolveLocation(raw: string): ResolvedLocation | null {
   }
   if (!key) return null
   return { key, ...PLACES[key], home, raw }
+}
+
+/**
+ * Where to plot a session on the map. Prefer the GPS fix captured at workout
+ * start (exact, works anywhere) — snapping to a known place when one is within
+ * range so repeat visits cluster on one dot, otherwise an ad-hoc dot keyed to a
+ * ~11km cell and labelled with whatever was typed. Only when a session has NO
+ * coordinates (historical imported sessions) do we fall back to resolving the
+ * typed label against the built-in gazetteer. null = nothing to plot.
+ */
+export function placeForSession(s: Session): Place | null {
+  if (s.lat != null && s.lon != null) {
+    const near = nearestPlace(s.lat, s.lon)
+    if (near) return near
+    return {
+      key: `geo:${s.lat.toFixed(1)},${s.lon.toFixed(1)}`,
+      name: s.location?.trim() || `${s.lat.toFixed(2)}, ${s.lon.toFixed(2)}`,
+      country: '',
+      lat: s.lat,
+      lon: s.lon,
+    }
+  }
+  if (s.location) {
+    const r = resolveLocation(s.location)
+    if (r) return { key: r.key, name: r.name, country: r.country, lat: r.lat, lon: r.lon }
+  }
+  return null
 }
