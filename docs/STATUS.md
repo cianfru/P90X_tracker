@@ -5,6 +5,49 @@ _Working branch: `claude/eloquent-pasteur-o7drkn` (also fast-forwarded to `main`
 This is a running "where we are" note so work can resume cleanly. Newest context
 at the top.
 
+## ✅ WORKING: sign in with Google, data persists to your account
+
+The architecture, finally settled:
+
+- **No sign-in** → app fully usable, everything local ("Local only"). Anyone can
+  use it; nothing to configure.
+- **Sign in with Google** → history persists to your own account, reachable from
+  any device you sign in on. Nothing to paste, ever.
+- **Your Google user id IS the account key.** A new person signing in gets a
+  private, isolated account with zero setup.
+
+Stack: PWA (Dexie, local-first) → `web/api/index.py` (FastAPI, one file, Vercel
+Python functions at `/api` on the app's own origin) → Neon Postgres.
+
+Vercel env vars: `DATABASE_URL` (auto from the Neon Storage integration) and
+`GOOGLE_CLIENT_ID` =
+`263131716163-qb9qeodvseeff1l776ge27asfbcl6lcl.apps.googleusercontent.com`
+(public, already hardcoded in `web/src/sync/googleAuth.ts`). Check with
+`/api/health` → `{"ok":true,"db":"configured","auth":"google"}`.
+
+**Removed:** the Google Sheets backend, and the pasted-token scheme. Both were
+second paths to the same thing and caused most of the pain below.
+
+### What cost us a day, so it isn't repeated
+
+1. **Don't add config during an incident.** `//` comment keys in `vercel.json`
+   fail its strict schema and get the deployment *rejected before any build* —
+   which looks exactly like a broken webhook. `git` is also not in the
+   documented property list. When stuck, revert config to the last version that
+   demonstrably deployed and change one variable at a time.
+2. **Serverless bundling:** sibling modules next to the entrypoint aren't
+   reliably shipped → `ModuleNotFoundError` → opaque `FUNCTION_INVOCATION_FAILED`
+   on every route. The API is one self-contained file for this reason.
+3. **Vercel "Redeploy" replays that deployment's own commit** — it can never
+   pick up a newer fix. Push, or use a Deploy Hook (Settings → Git).
+4. **100 deployments/24h, shared across projects.** Don't push the same commit
+   to two branches; production is `main`.
+5. **Service worker:** `registerType:'autoUpdate'` did NOT imply skipWaiting +
+   clientsClaim — set them explicitly, or an installed PWA never updates. Also
+   `navigateFallbackDenylist: [/^\/api\//]` or the shell answers API URLs.
+6. **Batch DB writes.** One INSERT per row = one network round-trip per row;
+   18k rows blew the function limit (504). Use `executemany`.
+
 ## ✅ Shipped recently (this session)
 
 - **Google connect/sync fixed (was: "PWA unusable")** — root cause: the earlier
