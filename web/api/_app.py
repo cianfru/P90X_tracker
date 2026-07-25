@@ -24,6 +24,7 @@ Run locally:  DATABASE_URL=postgres://…  SYNC_TOKEN=…  uvicorn main:app
 import datetime
 import json
 import os
+import urllib.parse
 
 import asyncpg
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
@@ -32,7 +33,47 @@ from pydantic import BaseModel
 
 from _schema import SCHEMA_SQL
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+# Accept whichever name the host injected. Vercel's Neon/Postgres integration
+# provisions several; the plain pooled ones come first, and the non-pooling
+# variants are last-resort fallbacks so a misconfigured project still connects.
+_DSN_VARS = (
+    "DATABASE_URL",
+    "POSTGRES_URL",
+    "DATABASE_URL_UNPOOLED",
+    "POSTGRES_URL_NON_POOLING",
+)
+
+# Query params libpq understands but asyncpg does not — Neon's copy-paste
+# strings include channel_binding, which would otherwise raise on connect.
+_DROP_PARAMS = {"channel_binding", "options"}
+
+
+def _normalize_dsn(dsn: str) -> str:
+    """Strip connection params asyncpg can't parse; leave everything else."""
+    if not dsn:
+        return dsn
+    parts = urllib.parse.urlsplit(dsn)
+    if not parts.query:
+        return dsn
+    kept = [
+        (k, v)
+        for k, v in urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+        if k not in _DROP_PARAMS
+    ]
+    return urllib.parse.urlunsplit(
+        parts._replace(query=urllib.parse.urlencode(kept))
+    )
+
+
+def _database_url() -> str:
+    for var in _DSN_VARS:
+        val = os.environ.get(var, "").strip()
+        if val:
+            return _normalize_dsn(val)
+    return ""
+
+
+DATABASE_URL = _database_url()
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
 
 
@@ -66,7 +107,11 @@ async def get_pool() -> asyncpg.Pool:
     global _pool, _schema_ready
     if _pool is None:
         if not DATABASE_URL:
-            raise HTTPException(status_code=500, detail="DATABASE_URL not set")
+            raise HTTPException(
+                status_code=500,
+                detail="No database configured — set DATABASE_URL (or connect "
+                "a Postgres integration) in the deployment's env vars.",
+            )
         _pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=4)
     if not _schema_ready:
         async with _pool.acquire() as conn:
@@ -131,7 +176,14 @@ class PushBody(BaseModel):
 
 @router.get("/health")
 async def health():
-    return {"ok": True}
+    """Liveness + a config self-check, so hitting this URL in a browser after a
+    deploy tells you whether the env vars actually landed. Reports only
+    presence, never the values."""
+    return {
+        "ok": True,
+        "db": "configured" if DATABASE_URL else "missing",
+        "tokens": len(TOKENS),
+    }
 
 
 @router.post("/sync/push")

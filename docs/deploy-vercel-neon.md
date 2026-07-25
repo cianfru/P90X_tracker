@@ -15,13 +15,24 @@ already knows where its server is. You only need a member token.
 
 ---
 
-## 1. Create the database (Neon) — ~2 min
+## 1. Create the database — ~2 min
 
-1. Sign up at <https://neon.tech>, create a **Project** (region nearest you).
-2. Open **Connection Details** and copy the **Pooled** connection string — the
-   host must contain **`-pooler`**. Serverless opens many short connections;
-   the pooler is what keeps Neon from running out.
-3. Nothing to run: the tables are created automatically on the first request.
+**Easiest: provision Neon from inside Vercel.** In your existing project →
+**Storage** tab → **Create Database** → **Neon** → connect it to the project.
+Vercel provisions the database and **injects `DATABASE_URL` automatically**, so
+there's no connection string to copy by hand and no password to move around.
+
+The API accepts whichever variable name the integration sets — it looks for
+`DATABASE_URL`, then `POSTGRES_URL`, then the non-pooling variants — and strips
+params asyncpg can't parse (e.g. Neon's `channel_binding`), so a pasted
+copy-paste string works as-is.
+
+_Manual alternative:_ sign up at <https://neon.tech>, create a project, and copy
+the **Pooled** connection string (host contains **`-pooler`**) into a
+`DATABASE_URL` env var yourself. Prefer pooled — serverless opens many short
+connections.
+
+Nothing to run either way: tables are created automatically on the first request.
 
 ## 2. Make member tokens
 
@@ -49,13 +60,23 @@ In your existing project (the one serving `p90xtracker.vercel.app`) →
 
 | Name | Value |
 | --- | --- |
-| `DATABASE_URL` | the Neon **pooled** string from step 1 |
+| `DATABASE_URL` | **skip if you used the Storage integration** — it's already set |
 | `SYNC_TOKENS` | the JSON token→account map from step 2 |
 
 `CORS_ORIGINS` is not needed (same origin). Then **Deployments → Redeploy** so
 the functions pick up the variables.
 
-Sanity check: open `https://p90xtracker.vercel.app/api/health` → `{"ok":true}`.
+**Sanity check:** open `https://p90xtracker.vercel.app/api/health`. It reports
+whether the config landed, without revealing any values:
+
+```json
+{ "ok": true, "db": "configured", "tokens": 2 }
+```
+
+- `"db": "missing"` → the database env var didn't reach this deployment.
+- `"tokens": 0` → `SYNC_TOKENS` is missing or isn't valid JSON.
+- **404 / the app's HTML instead of JSON** → the functions didn't deploy; check
+  the build log for the Python build step.
 
 ## 4. Connect the app — ~1 min per device
 
