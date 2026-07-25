@@ -14,13 +14,41 @@ interchangeable workouts, not a fixed title.
 
 | Day | Stimulus | Interchangeable options |
 | --- | --- | --- |
-| 1 | Push / chest | `chest-and-back` · `chest-shoulders-tris` |
+| 1 | Push / chest | paired with day 3 — see the pair table below |
 | 2 | Plyo / legs | **Plyometrics** · **Plyocide** · `bb-bulk-legs` |
-| 3 | Pull / back+bis | `back-and-bis` · `v-sculpt` |
-| 4 | Total body / complex | `p90x2-x2-total-body` · `p90x3-complex-upper` · `p90x3-complex-lower` · `p90x3-eccentric-upper` · `p90x3-eccentric-lower` |
+| 3 | Pull | determined by day 1 — see the pair table below |
+| 4 | Total body / complex | X2 Total Body, **or** an X3 upper+lower PAIR — see below |
 | 5 | Legs / base | `legs-and-back` · `p90x2-base-back` |
 | 6 | Complex **or** eccentric (pick one) **+ X3 abs** | as day 4, plus **P90X3 abs** |
 | 7 | Recovery | — |
+
+### Day 1 and Day 3 are a MATCHED PAIR, not independent slots
+
+Picking day 1 determines day 3 — the standard P90X push/pull pairing, applied
+across programs. The preference order runs over PAIRS:
+
+| # | Day 1 (push) | Day 3 (pull) |
+| - | --- | --- |
+| 1 | `chest-and-back` | `shoulders-and-arms` |
+| 2 | `chest-shoulders-tris` | `back-and-bis` |
+| 3 | `x2-chest-back` | `x2-shoulders-arms` |
+| 4 | `x2-chest-sh-tris` | `v-sculpt` |
+
+(Mirrors the guide: Phase 1 = Chest&Back + Shoulders&Arms, Phase 2 =
+Chest/Sh/Tris + Back&Bis. V-Sculpt is X2's back/bis equivalent.)
+
+### A day can hold MORE THAN ONE workout
+
+P90X3 sessions are short, so they are doubled up to match the duration of a
+full-length workout. Day 4 is therefore one of:
+- `p90x2-x2-total-body` (single), or
+- `p90x3-eccentric-upper` **+** `p90x3-eccentric-lower`, or
+- `p90x3-complex-upper` **+** `p90x3-complex-lower`
+
+Day 6 is one X3 workout (complex or eccentric) **+** X3 abs.
+
+→ The model must support a slot resolving to a LIST of workouts, and a session
+   that contains two routines.
 
 ### How a slot resolves (confirmed by the owner)
 
