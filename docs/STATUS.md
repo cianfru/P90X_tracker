@@ -62,6 +62,35 @@ at the top.
 2. **Get devices onto the new build** to receive the aura + map + busy fixes.
    Check the `Build …` stamp at the bottom of **Account** to confirm.
 
+## 💭 Explored, parked: making the app public / multi-user
+
+Asked whether the app could be standalone (not just the two of us). Answer:
+yes — **parked for now, revisit later**. Findings so we don't re-derive them:
+
+- **Already done:** multi-tenancy. Every row carries `account_id`, all queries
+  are scoped by it, and there's a cross-account write guard
+  (`api/main.py:161,184`) so a UUID belonging to another account can't be
+  overwritten. Scaling from 2 accounts to many needs no data-model change.
+- **Would need building:** self-serve sign-up. Replace the hand-made
+  `SYNC_TOKENS` env map with **Google Sign-In for identity only**
+  (`openid email profile` — no Drive, non-sensitive, no consent warning); the
+  API verifies the ID token and uses Google's stable subject as `account_id`.
+  GIS is already wired, so ~a day's work, not a rewrite.
+- **⚠️ BLOCKER before any public release — privacy.** `web/public/history.json`
+  is bundled into every install: 791 sessions, **2.8 MB**, **82 distinct
+  locations**, **146 sessions with personal notes**. Publishing it would hand
+  every stranger a 7-year travel/training diary. It must become a private
+  import (file or server restore) for the owner's account, not a shipped
+  asset. Bonus: −2.8 MB bundle.
+- **⚠️ Consider before public — IP.** "P90X"/"Body Beast" are Beachbody
+  trademarks and the app ships their official logos + routine structures.
+  Fine privately; real exposure publicly. Usual fix: drop logos, neutral
+  naming, routines as user-created templates. Owner's call.
+- **Also needed:** account deletion, rate limiting + payload caps, and cost
+  planning (Neon/Vercel free tiers are fine for tens–low hundreds of users).
+- **Middle option** if full-public is too much: invite-code redemption —
+  keeps the token model, just makes it self-serve. Much smaller build.
+
 ## ⏳ Pending: DECISION needed from you
 
 - **Analytics verifier** — I proposed adding Vitest + an anchor test that
