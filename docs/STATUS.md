@@ -136,6 +136,20 @@ non-logging / schedule-only).
 - The guide itself sanctions backing off when overtrained, and flags a rising
   resting heart rate as the signal.
 
+## 🗓 The cycle is the week (corrected 2026-07-25)
+
+Day 1 is **Monday**, day 7 is **Sunday**. The first cut let the 7-day cycle
+float — its phase set by whenever the last session happened — so the cycle
+drifted off the calendar and Monday could land on day 4 (complex upper +
+complex lower). Wrong: the owner's framing is weekly ("day 7: recovery", Sunday
+held back to catch up), and it's the same boundary the load budget resets on.
+
+Within a week the queue advances a slot a day; a day that came and went without
+a session doesn't advance it, so the week shifts forward and the tail (day 6's
+light session, then the rest day) is squeezed out — "everything moves forward by
+one day". Monday restarts at day 1, so the plan can never drift more than a week
+out of phase.
+
 ## 📊 Weekly load budget (built 2026-07-25)
 
 `web/src/schedule/weekLoad.ts` — the answer to "what's my weekly minimum, and

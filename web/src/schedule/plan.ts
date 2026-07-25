@@ -4,13 +4,16 @@ import { computeStaleness } from './staleness'
 /*
  * The schedule.
  *
- * Nothing is stored. The plan is DERIVED from what's actually been logged:
- * consecutive calendar days are handed to consecutive slots of the cycle,
- * starting from the first slot not yet done. That single rule gives the owner's
- * "everything moves forward by one day" behaviour for free — miss a day and the
- * queue simply hasn't advanced, so by Sunday you're on day 6 (the flex slot)
- * instead of day 7, and the rest day is what gets squeezed out. Miss two and
- * both absorbers become real workouts.
+ * Nothing is stored. The plan is DERIVED from what's actually been logged, and
+ * the cycle IS the week: day 1 is Monday, day 7 is Sunday. That's the owner's
+ * own framing — "day 7: recovery", Sunday held back to catch up — and it's the
+ * same boundary the weekly load budget resets on.
+ *
+ * Within a week the queue advances one slot a day, but a day that came and went
+ * without a session doesn't advance it, so the rest of the week shifts forward
+ * and the tail — day 6's light session, then the rest day — is what gets
+ * squeezed out. That's "everything moves forward by one day". Monday restarts
+ * at day 1, so you can never drift more than a week out of phase.
  *
  * Because it's derived, there is no plan to repair when life happens. Fly,
  * skip, double up — the next render just reflects where you actually are.
@@ -204,13 +207,34 @@ export function planSchedule(
   const choices = currentChoices(rotation, sessions)
   const cycle = rotation.slots.length || 7
 
-  // Where the queue stands: the slot after the most recent logged one. Days
-  // before `from` that were logged have already advanced it.
-  const past = [...doneByDate.entries()]
-    .filter(([d]) => d < from)
-    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-  const lastDay = past.length ? Math.max(...past[past.length - 1][1]) : 0
-  let cursor = (lastDay % cycle) + 1
+  /*
+   * The cycle IS the week. Day 1 is Monday and day 7 is Sunday — the owner's
+   * own framing ("day 7: recovery", Sunday kept free to catch up), and the same
+   * boundary the weekly load budget resets on.
+   *
+   * Within a week the queue advances one slot a day, but a day that came and
+   * went WITHOUT a session doesn't advance it: the rest of the week shifts
+   * forward and the tail — day 6's light session, then the rest day — is what
+   * gets squeezed out. That's "everything moves forward by one day", and
+   * because Monday restarts at day 1 you can never end up more than a week
+   * adrift.
+   */
+  const slotByDate = new Map<string, number>()
+  const lastDate = addDays(from, count - 1)
+  for (let w = weekStart(from); w <= lastDate; w = addDays(w, 7)) {
+    let slot = 1
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(w, i)
+      const done = doneByDate.get(d)
+      // A day that was trained belongs to whatever was actually done.
+      const s = done?.length ? Math.max(...done) : slot
+      slotByDate.set(d, s)
+      if (done?.length) slot = Math.min(cycle, s + 1)
+      // Days still ahead are assumed to happen; days already gone that weren't
+      // trained hold the queue where it is.
+      else if (d >= from) slot = Math.min(cycle, slot + 1)
+    }
+  }
 
   const byDate = new Map(roster.map((r) => [r.date, r]))
   /** Nearest upcoming day that could actually take a real session. */
@@ -228,9 +252,7 @@ export function planSchedule(
   for (let i = 0; i < count; i++) {
     const date = addDays(from, i)
     const doneDays = doneByDate.get(date) ?? []
-    // If something was logged that day, the day belongs to what was actually
-    // done — the plan follows reality rather than arguing with it.
-    const slotDay = doneDays.length ? Math.max(...doneDays) : cursor
+    const slotDay = slotByDate.get(date) ?? (i % cycle) + 1
     const done = doneDays.length > 0
     const isNext = !done && !markedNext
     if (isNext) markedNext = true
@@ -255,7 +277,6 @@ export function planSchedule(
           : adviseDay(r, kind, workoutIds, nextGoodDay(date))
         : undefined,
     })
-    cursor = (slotDay % cycle) + 1
   }
   return out
 }
