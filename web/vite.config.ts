@@ -48,6 +48,11 @@ export default defineConfig({
         // Cache the app shell so the logger opens instantly and works with no signal.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
+        // The sync API is served from /api on this same origin. Without this
+        // the app-shell fallback answers any /api URL opened directly in the
+        // browser (e.g. /api/health) with index.html, so the API looks like it
+        // isn't deployed. Never shell-fallback API paths.
+        navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
         // history.json (~2.6 MB) is imported into IndexedDB on first run; keep it
         // out of precache but cache-first at runtime so a re-seed works offline.
