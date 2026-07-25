@@ -40,6 +40,7 @@ import {
 import {
   ensureSpreadsheet,
   markMigrationDone,
+  migrationDone,
   pushAll,
   syncGoogle,
 } from '../sync/googleSheets'
@@ -97,7 +98,19 @@ export function Account({
       setAccount(acct)
       onChange()
       const { id, empty } = await ensureSpreadsheet()
-      if (empty) {
+      if (empty && migrationDone()) {
+        // RECONNECT: this account already finished its first-run migration but
+        // the sheet is empty — the backup target was recreated (e.g. a scope
+        // change made the old one unreachable). Re-upload everything without
+        // asking: the choose-dialog's "Start clean" would wipe local data,
+        // which is never what a reconnect means.
+        setBusy('migrate')
+        await pushAll(id, (done, total) =>
+          setPct(Math.round((done / total) * 100)),
+        )
+        setPct(null)
+        onChange()
+      } else if (empty) {
         // Sheet has no data yet (new, or an interrupted first sync): let the
         // user upload existing data or start clean (a second person shouldn't
         // inherit the seeded history).

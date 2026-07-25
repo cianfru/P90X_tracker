@@ -191,6 +191,27 @@ async function createSpreadsheet(): Promise<string> {
  */
 export async function ensureSpreadsheet(): Promise<{ id: string; empty: boolean }> {
   let id = localStorage.getItem(sheetKey())
+  if (id) {
+    // Validate the cached id. After a scope change (or a deleted sheet) it can
+    // point at a spreadsheet this token can no longer touch — and every sync
+    // would fail forever. On a definitive 403/404 drop the id and the cursors
+    // tied to it, then find/create a reachable sheet. Network errors are NOT
+    // treated as a dead sheet (offline must not discard a working id).
+    try {
+      await api(`${SHEETS_API}/${id}?fields=spreadsheetId`)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+      if (/^Sheets API 4(03|04)/.test(msg)) {
+        id = null
+        localStorage.removeItem(sheetKey())
+        await db.meta.delete(rowKey(SESSIONS))
+        await db.meta.delete(rowKey(SETS))
+        await db.meta.delete('gsheet-gen')
+      } else {
+        throw e
+      }
+    }
+  }
   if (!id) {
     id = (await findSpreadsheet()) ?? (await createSpreadsheet())
     localStorage.setItem(sheetKey(), id)
@@ -474,7 +495,15 @@ export async function syncGoogle(opts?: { full?: boolean }): Promise<{
   }
   runningSince = Date.now()
   try {
-    const { id } = await ensureSpreadsheet()
+    const { id, empty } = await ensureSpreadsheet()
+    // Self-heal: an EMPTY sheet on an account whose first-run migration already
+    // finished means the backup target was recreated (e.g. a scope change made
+    // the old sheet unreachable and ensureSpreadsheet made a fresh one).
+    // Re-upload everything instead of syncing deltas into a void.
+    if (empty && migrationDone() && (await db.sessions.count()) > 0) {
+      await pushAll(id)
+      return { ok: true, pulled: { sessions: 0, sets: 0 } }
+    }
     const touched = await pushOutbox(id)
     const remoteGen = await readGen(id)
     const localGen = ((await db.meta.get('gsheet-gen'))?.value as string) ?? ''

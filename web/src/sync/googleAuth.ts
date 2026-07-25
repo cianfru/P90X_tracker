@@ -18,6 +18,23 @@ const SCOPE =
 
 const CLIENT_ID_KEY = 'p90x-google-client-id'
 const ACCOUNT_KEY = 'p90x-google-account'
+const SCOPE_KEY = 'p90x-google-granted-scope'
+
+// One-time migration on load: if the scopes we request changed since this
+// device's grant (or the grant predates scope tracking), forget the account
+// locally so the UI shows "Not backed up → reconnect" and one fresh consent is
+// made. Without this, silent tokens against the stale grant fail per-request
+// with no visible way to recover — the app just looks dead.
+try {
+  if (
+    localStorage.getItem(ACCOUNT_KEY) &&
+    localStorage.getItem(SCOPE_KEY) !== SCOPE
+  ) {
+    localStorage.removeItem(ACCOUNT_KEY)
+  }
+} catch {
+  /* storage unavailable — nothing to migrate */
+}
 
 // The app's public OAuth Client ID (not a secret — it's embedded in any browser
 // app). Baked in so sign-in works out of the box on every device; a settings
@@ -165,6 +182,9 @@ export async function signIn(): Promise<GoogleAccount> {
   const token = await requestToken(true)
   const account = await fetchProfile(token)
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account))
+  // Remember which scope set this grant was made with, so a future scope
+  // change can detect the stale grant and ask for one fresh consent.
+  localStorage.setItem(SCOPE_KEY, SCOPE)
   return account
 }
 

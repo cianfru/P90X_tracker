@@ -1,12 +1,27 @@
 # Where we left off — session memory
 
-_Working branch: `claude/eloquent-pasteur-o7drkn` (also fast-forwarded to `main`).
-Latest commit at time of writing: `2ea3001`._
+_Working branch: `claude/eloquent-pasteur-o7drkn` (also fast-forwarded to `main`)._
 
 This is a running "where we are" note so work can resume cleanly. Newest context
 at the top.
 
 ## ✅ Shipped recently (this session)
+
+- **Google connect/sync fixed (was: "PWA unusable")** — root cause: the earlier
+  de-scoping to `drive.file` cut off access to the OLD spreadsheet (created
+  under the broad grant), so every sync 403'd against the cached sheet id, and
+  the stale grant made silent token refreshes fail with no visible recovery.
+  Fix (keeps the no-warning win): (1) scope-migration guard — a grant made
+  under different scopes is forgotten on boot, so the app shows the amber
+  **"Not backed up" → tap → Sign in** path (one fresh consent, no scary
+  screen); (2) `ensureSpreadsheet` validates the cached sheet id and on a
+  definitive 403/404 drops it + cursors and finds/creates a reachable sheet;
+  (3) reconnect auto-recovery — an empty sheet on an already-migrated account
+  triggers a full re-upload automatically (sign-in path shows progress; the
+  background sync path does it silently). The OLD "P90X Logbook" in Drive
+  becomes a stale archive — safe to delete/rename after the new one populates.
+  **What the owner does: update the app, open Account, tap Sign in, wait for
+  the re-upload. Same once for the wife's device.**
 
 - **Aura rendering fixed** — the page-wide green aura was hidden by a solid
   `background-color` on `<body>` painting over the `z-index:-1` pseudo-element.
