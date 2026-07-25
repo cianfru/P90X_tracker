@@ -68,7 +68,15 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
           : []),
       ])
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      // Report where it broke, not just what. A bare "undefined is not a
+      // function" from inside a minified PDF library is unactionable; the
+      // first stack frame is what makes it fixable.
+      const err = e instanceof Error ? e : new Error(String(e))
+      const frame = (err.stack ?? '')
+        .split('\n')
+        .map((l) => l.trim())
+        .find((l) => l && !l.startsWith(err.name) && l !== err.message)
+      setError(`${err.name}: ${err.message}${frame ? `\n${frame}` : ''}`)
     } finally {
       setBusy(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -160,7 +168,7 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
           </p>
         )}
         {error && (
-          <p className="rounded-xl border border-rose-400/30 bg-rose-400/[0.08] px-3 py-2 text-[12.5px] text-rose-300">
+          <p className="rounded-xl border border-rose-400/30 bg-rose-400/[0.08] px-3 py-2 text-[12.5px] whitespace-pre-line text-rose-300">
             {error}
           </p>
         )}
