@@ -20,9 +20,11 @@ import { readRosterGrid } from './rosterPdf'
 const HOUR = 3600_000
 const DAY = 86400_000
 
-/** A duty longer than this leaves no usable evening, however fresh you are. */
-const NO_WINDOW_HOURS = 12
-/** Above this a duty day can only take a short session (one X3, not a P90X). */
+/**
+ * Above this many duty hours, only a short session fits — one X3, not a full
+ * P90X. The single number worth tuning: raise it if long days still leave room
+ * for a proper session, lower it if they don't.
+ */
 const SHORT_WINDOW_HOURS = 8
 /** Rest below this between duties is a genuinely broken night. */
 const SHORT_REST_HOURS = 12
@@ -36,17 +38,17 @@ const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n))
 /**
  * How much of the day the duty leaves behind.
  *
- * Length alone isn't the question — an evening report leaves the whole day
- * free, and standby is waiting by the phone rather than working, so it can't
- * cost what a duty of the same length costs.
+ * A duty day is never a write-off: on a long day the owner squeezes a short
+ * session in rather than skipping, so this returns 'short' where a stricter
+ * model would return 'none'. Length alone isn't the question either — an
+ * evening report leaves the whole day free, and standby is waiting by the
+ * phone rather than working.
  */
 function windowFor(d: ParsedDuty, homeTz: string): TrainingWindow {
   const effective = d.kind === 'standby' ? d.dutyHours / 2 : d.dutyHours
-  if (effective >= NO_WINDOW_HOURS) return 'none'
   // Report in the evening ⇒ the day before it is yours.
   if (localHour(d.reportUtc, homeTz) >= 17) return 'full'
-  if (effective >= SHORT_WINDOW_HOURS) return 'short'
-  return 'full'
+  return effective >= SHORT_WINDOW_HOURS ? 'short' : 'full'
 }
 
 /** Local clock hour (0–23) of an instant in a given zone. */

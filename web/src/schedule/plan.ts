@@ -139,18 +139,27 @@ function adviseDay(
     ? ` — better on ${betterDay.slice(8)}/${betterDay.slice(5, 7)}`
     : ''
 
-  if (r.window === 'none') {
-    return {
-      ...base,
-      clash: 'no-window',
-      suggestion: `No room after this duty. Skip it and the week slides forward${moveTo}.`,
-    }
-  }
+  // Nothing here ever says "skip it". The owner trains on long days too — the
+  // session gets shorter, not cancelled — so the advice is always how to scale
+  // it down, with the fresher day offered as an option rather than a verdict.
   if (r.readiness < WRECKED) {
     return {
       ...base,
       clash: 'tired',
-      suggestion: `You'll be flat. Take the rest day early, or do day 6's light session${moveTo}.`,
+      suggestion:
+        workoutIds.length > 1
+          ? `Long day — do one of the two${moveTo}.`
+          : `Long day — squeeze a short one, save the full session${moveTo}.`,
+    }
+  }
+  if (r.window === 'short') {
+    return {
+      ...base,
+      clash: 'no-window',
+      suggestion:
+        workoutIds.length > 1
+          ? 'Tight day — one of the two will fit.'
+          : 'Tight day — a short version fits either side of the duty.',
     }
   }
   if (r.readiness < GOOD_DAY && kind === 'work') {
@@ -160,7 +169,7 @@ function adviseDay(
       suggestion:
         workoutIds.length > 1
           ? 'Half a tank — do one of the two, not both.'
-          : `Half a tank — go lighter than usual, or trade with a fresher day${moveTo}.`,
+          : `Half a tank — go lighter than usual${moveTo}.`,
     }
   }
   return base
@@ -209,7 +218,7 @@ export function planSchedule(
     for (let k = 1; k <= 4; k++) {
       const d = addDays(after, k)
       const r = byDate.get(d)
-      if (r && r.window !== 'none' && r.readiness >= GOOD_DAY) return d
+      if (r && r.window === 'full' && r.readiness >= GOOD_DAY) return d
     }
     return null
   }

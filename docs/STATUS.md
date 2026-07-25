@@ -225,6 +225,11 @@ sleep modelling are its product and stay there. Readiness here is derived only
 from what the parser can see — duty hours, sectors, rest gaps, hotel nights, and
 what time you signed off — and says so in the code.
 
+**A duty day is never a write-off.** The owner squeezes a session in on long
+days rather than skipping, so the window degrades to `short`, never `none`, and
+the advice is always how to scale the session down — it never says "skip it".
+`SHORT_WINDOW_HOURS` (8) in `roster.ts` is the one number worth tuning.
+
 pdf.js (~1.7 MB) is lazily imported AND excluded from the precache
 (`globIgnores`), then runtime-cached: installs stay lean, and the second import
 onward works offline.
