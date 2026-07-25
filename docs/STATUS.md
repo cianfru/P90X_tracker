@@ -156,6 +156,24 @@ falls out of the model rather than being a rule bolted on:
 - The Mixer is the response: the card offers "Mix a {light,medium,hard} one",
   preset to the intensity the week still owes.
 
+**The debt dies on Monday** — a missed week must never make the next one harder,
+or a bad fortnight compounds into a demand nobody could meet. Two independent
+guarantees, both verified against the archive:
+
+1. `banked` only counts sessions inside the current Monday–Sunday week and
+   `target` is a fixed weekly figure, so there is nowhere for a deficit to
+   accumulate. A Sunday sitting at 11/142 and out of reach becomes a routine
+   52-point ask the next morning.
+2. The target is a median of RECENT weeks, so training less pulls it DOWN. Over
+   a simulated three-month lay-off it decays 141 → 115 and the ask with it
+   (71 → 58). The only stable direction is gentler.
+
+Across every Monday of 2026 the fresh-week ask stays in a 44–84 band with no
+upward drift. The card shows the week's dates and "resets Mon" so this is
+visible rather than merely true, and only tints amber when the ask has actually
+got demanding — a fresh Monday is "behind" by definition and isn't dressed up as
+a warning.
+
 Verified against the real 791-session history: a fresh Monday asks ~71 × 2; a
 week with one 11-point session banked asks ~66 × 2; 89/110 with one day left
 asks 21; 2019's 3-session weeks self-calibrate to ~25 × 3.

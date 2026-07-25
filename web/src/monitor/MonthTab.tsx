@@ -6,7 +6,7 @@ import { startOrResumeSession } from '../db/repo'
 import { planSchedule, type PlannedDay } from '../schedule/plan'
 import { computeWeekLoad, neededIntensity } from '../schedule/weekLoad'
 import { todayISO } from '../lib/id'
-import { fmtTime } from '../lib/id'
+import { fmtDayMon, fmtTime } from '../lib/id'
 import { intensityColor, intensityLabel, type Intensity } from './intensity'
 import { C, Kpi } from './ui'
 import { SessionDetail } from './SessionDetail'
@@ -229,12 +229,19 @@ export function MonthTab({
           shortfall lands on the days that are left rather than vanishing. */}
       {week.target > 0 && (
         <div className="mb-4">
-          <div className="eyebrow mb-2">This week</div>
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <span className="eyebrow">This week</span>
+            {/* Spelled out so it's visible, not just true: the budget is a
+                Monday–Sunday window and the shortfall dies with it. */}
+            <span className="nums text-[11px] text-ink-3">
+              {fmtDayMon(week.start)}–{fmtDayMon(week.end)} · resets Mon
+            </span>
+          </div>
           <div
             className={`card px-4 py-3.5 ${
               week.outOfReach
                 ? 'border-rose-400/30 bg-rose-400/[0.06]'
-                : week.behind
+                : week.atRisk
                   ? 'border-amber-400/30 bg-amber-400/[0.06]'
                   : ''
             }`}
@@ -258,7 +265,7 @@ export function MonthTab({
                 className="h-full rounded-full transition-[width]"
                 style={{
                   width: `${Math.min(100, Math.round(week.progress * 100))}%`,
-                  background: week.behind ? C.amber : C.emerald,
+                  background: week.atRisk ? C.amber : C.emerald,
                 }}
               />
             </div>

@@ -18,6 +18,15 @@ export function fmtDate(iso: string): string {
   })
 }
 
+/** Day + month only ("21 Jul") — for date ranges inside one year. */
+export function fmtDayMon(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
 /** Local start time (HH:MM) from a ms timestamp — when a workout began. */
 export function fmtTime(ms: number): string {
   return new Date(ms).toLocaleTimeString('en-GB', {

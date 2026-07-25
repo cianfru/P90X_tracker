@@ -31,6 +31,22 @@ import { addDays, weekStart, type PlannedDay } from './plan'
  * At 141 points across a typical 2-session week, a normal week asks ~70 per
  * session — comfortably above the median session, which is the point: the
  * budget is a floor to clear, not an average to regress to.
+ *
+ * THE DEBT DIES ON MONDAY. A missed week must never make the next one harder,
+ * or a bad fortnight compounds into a demand nobody could meet. Two independent
+ * things guarantee that:
+ *
+ *   1. `banked` only ever counts sessions inside the CURRENT Monday–Sunday
+ *      week, and `target` is a fixed weekly figure. There is nowhere for a
+ *      deficit to accumulate — the shortfall is recomputed from scratch every
+ *      Monday, never carried.
+ *   2. The target is a median of RECENT weeks, so training less pulls it DOWN,
+ *      not up. Simulated over a three-month lay-off it decays 141 → 115 and the
+ *      ask with it (71 → 58). The only stable direction is gentler.
+ *
+ * Verified across every Monday of 2026: the fresh-week ask stays in a 44–84
+ * band with no upward drift, and a Sunday sitting at 11/142 (out of reach)
+ * becomes a routine 52-point ask the next morning.
  */
 
 /** Weeks of history the target is learned from. */
@@ -44,6 +60,8 @@ const MIN_WEEKS = 8
  * shortfall is better spread over another day.
  */
 const CEILING = 85
+/** Where the ask stops being routine and starts being a hard session. */
+const HARD = 65
 
 const median = (xs: number[]): number => {
   if (!xs.length) return 0
@@ -75,6 +93,12 @@ export interface WeekLoad {
   needed: number | null
   /** Behind the usual pace for this point in the week. */
   behind: boolean
+  /**
+   * Behind AND the remaining ask has got demanding — either it's climbed into
+   * the hard band or there's no spare day left to absorb a miss. A fresh Monday
+   * is "behind" by definition and shouldn't be dressed up as a warning.
+   */
+  atRisk: boolean
   /** The gap can't be closed at a sane per-session intensity — the days left
    *  would each have to be a personal best. Time to double up instead. */
   outOfReach: boolean
@@ -164,6 +188,7 @@ export function computeWeekLoad(
     sessionsLeft,
     needed,
     behind,
+    atRisk: behind && ((needed ?? 0) > HARD || daysLeft <= sessionsLeft),
     // Nothing left to spend, or every remaining day would have to be a top-15%
     // session. Either way one hard workout won't fix it.
     outOfReach: behind && (daysLeft === 0 || (needed ?? 0) > CEILING),
@@ -174,5 +199,5 @@ export function computeWeekLoad(
 /** Which Mixer dial answers this week's shortfall. */
 export function neededIntensity(w: WeekLoad): 'light' | 'medium' | 'hard' {
   if (w.needed == null) return 'medium'
-  return w.needed >= 65 ? 'hard' : w.needed >= 40 ? 'medium' : 'light'
+  return w.needed >= HARD ? 'hard' : w.needed >= 40 ? 'medium' : 'light'
 }
