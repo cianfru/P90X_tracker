@@ -27,6 +27,7 @@ import { Home } from './logger/Home'
 import { Session } from './logger/Session'
 import { Account } from './logger/Account'
 import { Mixer } from './logger/Mixer'
+import type { Intensity as MixIntensity } from './logger/mixer'
 
 // Charts (Recharts) are heavy — load them only when the Monitor is opened so the
 // gym-side logger stays lightweight.
@@ -50,7 +51,9 @@ export default function App() {
   // blank (a second person on their own device). null once decided/not needed.
   const [firstRun, setFirstRun] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
-  const [showMixer, setShowMixer] = useState(false)
+  // A string opens the Mixer with its dial preset — used when the week is
+  // behind budget and the app already knows how hard the session needs to be.
+  const [showMixer, setShowMixer] = useState<false | true | MixIntensity>(false)
   const [, bumpAccount] = useState(0)
   // Brief branded launch splash — fade it out shortly after mount.
   const [splash, setSplash] = useState<'show' | 'fade' | 'gone'>('show')
@@ -114,6 +117,7 @@ export default function App() {
   if (showMixer) {
     return (
       <Mixer
+        initialIntensity={showMixer === true ? undefined : showMixer}
         onBack={() => setShowMixer(false)}
         onStart={(id) => {
           setShowMixer(false)
@@ -207,7 +211,11 @@ export default function App() {
               </div>
             }
           >
-            <Monitor tab={view} onStart={setSessionId} />
+            <Monitor
+              tab={view}
+              onStart={setSessionId}
+              onMix={(level) => setShowMixer(level ?? true)}
+            />
           </Suspense>
         )}
       </main>
@@ -250,10 +258,7 @@ function FirstRun({
             Import the full 7-year P90X archive to log and chart on top of it.
           </span>
         </button>
-        <button
-          onClick={onFresh}
-          className="press card w-full px-5 py-4 text-left"
-        >
+        <button onClick={onFresh} className="press card w-full px-5 py-4 text-left">
           <span className="block font-semibold text-ink">Start fresh</span>
           <span className="mt-0.5 block text-[13px] text-ink-3">
             A blank logbook — begin from today. Best for a second person.

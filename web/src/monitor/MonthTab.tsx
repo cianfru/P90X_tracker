@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Clock, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Plus, Shuffle, X } from 'lucide-react'
 import type { Program, Session, WorkoutSet, WorkoutTemplate } from '../db'
 import { CATALOG } from '../db'
 import { startOrResumeSession } from '../db/repo'
 import { planSchedule, type PlannedDay } from '../schedule/plan'
+import { computeWeekLoad, neededIntensity } from '../schedule/weekLoad'
 import { todayISO } from '../lib/id'
 import { fmtTime } from '../lib/id'
 import { intensityColor, intensityLabel, type Intensity } from './intensity'
-import { Kpi } from './ui'
+import { C, Kpi } from './ui'
 import { SessionDetail } from './SessionDetail'
 
 /*
@@ -23,8 +24,18 @@ import { SessionDetail } from './SessionDetail'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 const iso = (y: number, m: number, d: number) =>
   `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -49,6 +60,7 @@ export function MonthTab({
   nameFor,
   templates,
   onStart,
+  onMix,
 }: {
   sessions: Session[]
   sets: WorkoutSet[]
@@ -57,6 +69,8 @@ export function MonthTab({
   templates: WorkoutTemplate[]
   /** Open the logger on a (possibly backdated) session. */
   onStart: (sessionId: string) => void
+  /** Open the Mixer, preset to the intensity this week still needs. */
+  onMix: (level?: 'light' | 'medium' | 'hard') => void
 }) {
   const live = useMemo(() => sessions.filter((s) => !s.deleted), [sessions])
 
@@ -100,16 +114,18 @@ export function MonthTab({
   const today = todayISO()
   const plan = useMemo(
     () =>
-      CATALOG.rotation
-        ? planSchedule(CATALOG.rotation, sessions, today, 28)
-        : [],
+      CATALOG.rotation ? planSchedule(CATALOG.rotation, sessions, today, 28) : [],
     [sessions, today],
   )
-  const planByDate = useMemo(
-    () => new Map(plan.map((p) => [p.date, p])),
-    [plan],
-  )
+  const planByDate = useMemo(() => new Map(plan.map((p) => [p.date, p])), [plan])
   const upNext = plan.filter((p) => !p.done).slice(0, 4)
+
+  // The week's load budget — how many intensity points are still owed, and
+  // therefore how hard the days that are left have to be.
+  const week = useMemo(
+    () => computeWeekLoad(sessions, intensity, plan, today),
+    [sessions, intensity, plan, today],
+  )
 
   const nameOf = (ids: string[]) =>
     ids.map((i) => templates.find((t) => t.id === i)?.name ?? i).join(' + ')
@@ -199,7 +215,8 @@ export function MonthTab({
     // that recorded load. A day of pure cardio/stretch gets a neutral dot
     // rather than borrowing a score it never earned.
     const scored = list.filter((s) => s.tracked)
-    if (!scored.length) return { color: 'rgba(255,255,255,0.35)', count: list.length }
+    if (!scored.length)
+      return { color: 'rgba(255,255,255,0.35)', count: list.length }
     const top = Math.max(...scored.map((s) => s.score))
     return { color: intensityColor(top), count: list.length }
   }
@@ -208,6 +225,85 @@ export function MonthTab({
 
   return (
     <div>
+      {/* This week's load budget. Points, not sessions — miss a day and the
+          shortfall lands on the days that are left rather than vanishing. */}
+      {week.target > 0 && (
+        <div className="mb-4">
+          <div className="eyebrow mb-2">This week</div>
+          <div
+            className={`card px-4 py-3.5 ${
+              week.outOfReach
+                ? 'border-rose-400/30 bg-rose-400/[0.06]'
+                : week.behind
+                  ? 'border-amber-400/30 bg-amber-400/[0.06]'
+                  : ''
+            }`}
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="nums text-lg font-bold">
+                {week.banked}
+                <span className="text-sm font-normal text-ink-3">
+                  {' '}
+                  / {week.target} pts
+                </span>
+              </span>
+              <span className="nums shrink-0 text-[12px] text-ink-3">
+                {week.done} session{week.done === 1 ? '' : 's'} · {week.daysLeft}{' '}
+                day{week.daysLeft === 1 ? '' : 's'} left
+              </span>
+            </div>
+
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+              <div
+                className="h-full rounded-full transition-[width]"
+                style={{
+                  width: `${Math.min(100, Math.round(week.progress * 100))}%`,
+                  background: week.behind ? C.amber : C.emerald,
+                }}
+              />
+            </div>
+
+            <p className="mt-2.5 text-[12.5px] leading-snug text-ink-2">
+              {!week.behind ? (
+                <>
+                  Week already on budget — anything more is ahead of your usual{' '}
+                  {week.typicalSessions}-session week.
+                </>
+              ) : week.outOfReach ? (
+                <>
+                  {week.target - week.banked} pts short with{' '}
+                  {week.daysLeft === 0
+                    ? 'no days left'
+                    : `only ${week.daysLeft} day${week.daysLeft === 1 ? '' : 's'} left`}{' '}
+                  — double up, or take the hit and open next week hard.
+                </>
+              ) : (
+                <>
+                  Aim for <b className="text-ink">~{week.needed}</b> intensity
+                  {week.sessionsLeft > 1
+                    ? ` across ${week.sessionsLeft} more sessions`
+                    : ' on your next session'}{' '}
+                  to finish the week on budget.
+                </>
+              )}
+            </p>
+
+            {/* The Mixer is the answer to a thin week: a session built to the
+                intensity still owed, rather than whatever the rotation had
+                queued up next. */}
+            {week.behind && (
+              <button
+                onClick={() => onMix(neededIntensity(week))}
+                className="press mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#ff5cc8]/40 bg-[#ff5cc8]/10 px-4 py-2.5 text-[13px] font-bold text-[#ff5cc8]"
+              >
+                <Shuffle size={15} />
+                Mix a {neededIntensity(week)} one
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* What's due — derived from what's actually been logged, so a missed
           day slides the rest forward instead of leaving a hole. */}
       {upNext.length > 0 && (
@@ -230,7 +326,9 @@ export function MonthTab({
                 >
                   <span
                     className={`nums flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-xl text-[10px] leading-none font-bold ${
-                      i === 0 ? 'bg-[#34f5a0] text-[#06140d]' : 'bg-white/[0.06] text-ink-3'
+                      i === 0
+                        ? 'bg-[#34f5a0] text-[#06140d]'
+                        : 'bg-white/[0.06] text-ink-3'
                     }`}
                   >
                     <span className="text-[13px]">{p.date.slice(8)}</span>

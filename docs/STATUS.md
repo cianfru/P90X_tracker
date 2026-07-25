@@ -136,6 +136,30 @@ non-logging / schedule-only).
 - The guide itself sanctions backing off when overtrained, and flags a rising
   resting heart rate as the signal.
 
+## 📊 Weekly load budget (built 2026-07-25)
+
+`web/src/schedule/weekLoad.ts` — the answer to "what's my weekly minimum, and
+does training less mean the remaining days have to be harder?" Yes, and that
+falls out of the model rather than being a rule bolted on:
+
+- The week is budgeted in **intensity points** (a session's 0–100 score), not in
+  sessions. Three easy days and two brutal ones aren't the same week.
+- The target is **learned**: median weekly points over the trailing **52 weeks**,
+  Monday-start, empty weeks included. Measured alternatives: all-history 96 (too
+  low — averages in the 2019 baseline), 104w 140, 52w 141, 26w 151, 13w 143. The
+  52w window tracks real growth (56 → 148 simulated across the history) without
+  the wobble of the short ones.
+- The shortfall is divided by **expected remaining sessions**, never by free
+  calendar days. Dividing by days inverts the whole idea — on a Monday it asks a
+  2-sessions-a-week trainee for six 24-point days. Extra days are recruited only
+  when one session would have to clear the 85-point ceiling (a top-15% session).
+- The Mixer is the response: the card offers "Mix a {light,medium,hard} one",
+  preset to the intensity the week still owes.
+
+Verified against the real 791-session history: a fresh Monday asks ~71 × 2; a
+week with one 11-point session banked asks ~66 × 2; 89/110 with one day left
+asks 21; 2019's 3-session weeks self-calibrate to ~25 × 3.
+
 ## 📌 Wanted next (owner's requests)
 
 - **Better map quality — evaluate Mapbox** in place of the current CARTO raster

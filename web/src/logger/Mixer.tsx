@@ -55,7 +55,10 @@ const MUSCLE_LABEL: Record<string, string> = {
 export function Mixer({
   onStart,
   onBack,
+  initialIntensity,
 }: {
+  /** Preselect the dial — e.g. 'hard' when entered from a weak-week prompt. */
+  initialIntensity?: Intensity
   onStart: (sessionId: string) => void
   onBack: () => void
 }) {
@@ -65,7 +68,9 @@ export function Mixer({
   const templates = useLiveQuery(() => db.templates.toArray())
 
   const [focus, setFocus] = useState<Focus>('total')
-  const [intensity, setIntensity] = useState<Intensity>('medium')
+  const [intensity, setIntensity] = useState<Intensity>(
+    initialIntensity ?? 'medium',
+  )
   const [nonce, setNonce] = useState(0)
   const [mix, setMix] = useState<MixResult | null>(null)
   const [starting, setStarting] = useState(false)
@@ -79,8 +84,7 @@ export function Mixer({
     [exercises],
   )
   const stats = useMemo(
-    () =>
-      sets && sessions ? exerciseStatsMap(sets, sessions, exById) : new Map(),
+    () => (sets && sessions ? exerciseStatsMap(sets, sessions, exById) : new Map()),
     [sets, sessions, exById],
   )
   const logged = useMemo(() => {

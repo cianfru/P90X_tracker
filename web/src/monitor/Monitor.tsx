@@ -24,10 +24,13 @@ export type Tab = 'overview' | 'month' | 'map' | 'exercise'
 export function Monitor({
   tab,
   onStart,
+  onMix,
 }: {
   tab: Tab
   /** Open the logger on a session (used to backdate one from the calendar). */
   onStart: (sessionId: string) => void
+  /** Open the Mixer, optionally preset to the intensity the week still needs. */
+  onMix: (level?: 'light' | 'medium' | 'hard') => void
 }) {
   const sessions = useLiveQuery(() => db.sessions.toArray())
   const sets = useLiveQuery(() => db.sets.toArray())
@@ -67,9 +70,10 @@ export function Monitor({
     const formTrend = [...formByMonth.entries()]
       .map(([label, v]) => ({ label, value: +(v.sum / v.n).toFixed(2) }))
       .sort((x, y) => (x.label < y.label ? -1 : 1))
-    const suppCounts = Object.fromEntries(
-      SUPPLEMENTS.map((s) => [s, 0]),
-    ) as Record<Supplement, number>
+    const suppCounts = Object.fromEntries(SUPPLEMENTS.map((s) => [s, 0])) as Record<
+      Supplement,
+      number
+    >
     let suppDays = 0
     const placeKeys = new Set<string>()
     let located = 0
@@ -99,9 +103,7 @@ export function Monitor({
 
   if (!a) {
     return (
-      <div className="mt-16 text-center text-sm text-ink-3">
-        Loading analytics…
-      </div>
+      <div className="mt-16 text-center text-sm text-ink-3">Loading analytics…</div>
     )
   }
   // Trends need data, but the calendar does not — it's also how you add a
@@ -130,6 +132,7 @@ export function Monitor({
         <MonthTab
           templates={templates ?? []}
           onStart={onStart}
+          onMix={onMix}
           sessions={sessions ?? []}
           sets={sets ?? []}
           intensity={intensity}

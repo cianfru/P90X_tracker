@@ -65,7 +65,8 @@ function currentChoices(
   const byKey = new Map(status.map((u) => [u.key, u]))
   const out = new Map<number, string[]>()
 
-  const pair = rotation.pairs[byKey.get('pair')?.currentIndex ?? 0] ?? rotation.pairs[0]
+  const pair =
+    rotation.pairs[byKey.get('pair')?.currentIndex ?? 0] ?? rotation.pairs[0]
   for (const s of rotation.slots) {
     if (s.fromPair) {
       out.set(s.day, [s.fromPair === 'push' ? pair.push : pair.pull])
@@ -147,3 +148,13 @@ export function planSchedule(
   }
   return out
 }
+
+/** Monday of the week `iso` falls in. The owner's week ends on Sunday — that's
+ *  the day they use to catch up ("I make sure I recover it on Sunday"). */
+export function weekStart(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return d.toISOString().slice(0, 10)
+}
+
+export { addDays }
