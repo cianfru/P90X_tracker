@@ -207,7 +207,7 @@ export default function App() {
               </div>
             }
           >
-            <Monitor tab={view} />
+            <Monitor tab={view} onStart={setSessionId} />
           </Suspense>
         )}
       </main>

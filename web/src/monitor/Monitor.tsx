@@ -21,7 +21,14 @@ import { ExerciseTab } from './ExerciseTab'
 
 export type Tab = 'overview' | 'month' | 'map' | 'exercise'
 
-export function Monitor({ tab }: { tab: Tab }) {
+export function Monitor({
+  tab,
+  onStart,
+}: {
+  tab: Tab
+  /** Open the logger on a session (used to backdate one from the calendar). */
+  onStart: (sessionId: string) => void
+}) {
   const sessions = useLiveQuery(() => db.sessions.toArray())
   const sets = useLiveQuery(() => db.sets.toArray())
   const exercises = useLiveQuery(() => db.exercises.toArray())
@@ -97,7 +104,9 @@ export function Monitor({ tab }: { tab: Tab }) {
       </div>
     )
   }
-  if (!logged.length) {
+  // Trends need data, but the calendar does not — it's also how you add a
+  // workout you did earlier, which is exactly what an empty logbook needs.
+  if (!logged.length && tab !== 'month') {
     return (
       <div className="mt-16 text-center text-sm text-ink-3">
         <Activity className="mx-auto mb-3 opacity-40" />
@@ -119,6 +128,8 @@ export function Monitor({ tab }: { tab: Tab }) {
       )}
       {tab === 'month' && (
         <MonthTab
+          templates={templates ?? []}
+          onStart={onStart}
           sessions={sessions ?? []}
           sets={sets ?? []}
           intensity={intensity}

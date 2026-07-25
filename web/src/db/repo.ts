@@ -29,8 +29,14 @@ export async function sessionExerciseSets(
 }
 
 /** Create today's session for a workout, or return the existing one. */
-export async function startOrResumeSession(workoutId: string): Promise<string> {
-  const date = todayISO()
+export async function startOrResumeSession(
+  workoutId: string,
+  /** Backdate the session (YYYY-MM-DD) when logging a workout you did earlier;
+   *  defaults to today. Resuming still matches on that same day, so tapping a
+   *  past date twice reopens the session rather than creating a duplicate. */
+  onDate?: string,
+): Promise<string> {
+  const date = onDate ?? todayISO()
   const candidates = await db.sessions.where({ workoutId, date }).toArray()
   const existing = candidates.find((s) => !s.deleted)
   if (existing) return existing.id
@@ -40,7 +46,9 @@ export async function startOrResumeSession(workoutId: string): Promise<string> {
     date,
     workoutId,
     deviceId: getDeviceId(),
-    createdAt: Date.now(),
+    // Backdated sessions get a timestamp on the day itself (midday), so they
+    // sort chronologically with real history instead of jumping to "now".
+    createdAt: onDate ? new Date(`${onDate}T12:00:00`).getTime() : Date.now(),
   })
   await enqueue('sessions', id)
   return id
