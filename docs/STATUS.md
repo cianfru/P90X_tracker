@@ -50,23 +50,25 @@ Day 6 is one X3 workout (complex or eccentric) **+** X3 abs.
 → The model must support a slot resolving to a LIST of workouts, and a session
    that contains two routines.
 
-### Day 6 is a FLEX slot — deliberate slack in the week
+### A missed day SLIDES the queue (corrected)
 
-Day 6 is "inherently a 50% workout": by default something light/fun (Kenpo X in
-the stock structure, or a short X3 + abs). It is intentionally half-committed so
-it can be REPURPOSED when the week goes badly. The week is really **5 committed
-slots (1-5) + 2 absorbers (6, 7)**:
+The week is an ordered QUEUE, not fixed calendar slots. Missing a day does not
+re-assign that workout somewhere specific — **everything moves forward by one
+day**. The missed workout happens next, everything after it pushes back, and the
+TAIL is what gets squeezed out.
+
+Day 6 is "inherently a 50% workout" — light/fun by default (Kenpo X, a short X3
++ abs, Cardio X) — precisely so it is the first thing that can be sacrificed.
 
 | Days missed | Day 6 | Day 7 |
 | --- | --- | --- |
 | 0 | light / fun | rest |
-| 1 | light / fun | make-up |
-| 2 | **make-up (harder)** | make-up |
+| 1 | **make-up** | light / fun (rest day lost) |
+| 2 | **make-up** | **make-up** |
 
-→ Required behaviour: **skipping a workout on the calendar must re-assign it**,
-   filling day 7 first, then day 6. The schedule adapts; the owner does not
-   re-plan by hand. Day 6's difficulty is therefore an OUTPUT of how the week
-   went, not a fixed property.
+Consistent with the owner's "I recover it on Sunday": the week's committed work
+still all lands by Sunday. Committed work (days 1-5) is never dropped, only
+delayed. Encoded as `rotation.onMiss: "slide"`.
 
 ### How a slot resolves (confirmed by the owner)
 

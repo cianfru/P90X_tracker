@@ -202,8 +202,14 @@ export interface Rotation {
   name: string
   pairs: RotationPair[]
   slots: RotationSlot[]
-  /** Days that absorb missed workouts, in priority order (e.g. [7, 6]). */
-  makeUpOrder: number[]
+  /**
+   * What happens when a day is missed. `slide`: the whole queue shifts forward
+   * one position — the missed workout happens next, everything after it pushes
+   * back, and the TAIL is what gets squeezed out (day 6's light session lands
+   * on day 7, and the rest day is lost). Miss two and both absorbers become
+   * real workouts. The committed work is never dropped, only delayed.
+   */
+  onMiss: 'slide'
   /** Every few months the whole cycle is replaced for a block. */
   blockBreak?: { program: Program; weeks: [number, number] }
 }
