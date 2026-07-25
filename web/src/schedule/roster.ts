@@ -1,5 +1,10 @@
 import type { RosterDay, TrainingWindow } from '../db'
-import { parseCrewLink, type ParsedDuty, type ParseResult } from './crewlink'
+import {
+  airportTz,
+  parseCrewLink,
+  type ParsedDuty,
+  type ParseResult,
+} from './crewlink'
 import { readRosterGrid } from './rosterPdf'
 
 /*
@@ -28,9 +33,19 @@ const OFF_CEILING = 95
 
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n))
 
-function windowFor(dutyHours: number): TrainingWindow {
-  if (dutyHours >= NO_WINDOW_HOURS) return 'none'
-  if (dutyHours >= SHORT_WINDOW_HOURS) return 'short'
+/**
+ * How much of the day the duty leaves behind.
+ *
+ * Length alone isn't the question — an evening report leaves the whole day
+ * free, and standby is waiting by the phone rather than working, so it can't
+ * cost what a duty of the same length costs.
+ */
+function windowFor(d: ParsedDuty, homeTz: string): TrainingWindow {
+  const effective = d.kind === 'standby' ? d.dutyHours / 2 : d.dutyHours
+  if (effective >= NO_WINDOW_HOURS) return 'none'
+  // Report in the evening ⇒ the day before it is yours.
+  if (localHour(d.reportUtc, homeTz) >= 17) return 'full'
+  if (effective >= SHORT_WINDOW_HOURS) return 'short'
   return 'full'
 }
 
@@ -61,9 +76,17 @@ function dutyReadiness(
   // A working day starts below a free day and can never climb back above it —
   // however light the duty, it still ate part of the day.
   let score = DUTY_CEILING
-  // Sim is mentally punishing but physically nothing, and a classroom day
-  // costs less again. They pay a smaller rate per hour, not a bonus on top.
-  const perHour = d.kind === 'flight' ? 5 : d.kind === 'simulator' ? 3 : 2
+  // Sim is mentally punishing but physically nothing; a classroom day or a
+  // home standby cost less again. They pay a smaller rate per hour rather
+  // than earning a bonus on top.
+  const perHour =
+    d.kind === 'flight'
+      ? 5
+      : d.kind === 'simulator'
+        ? 3
+        : d.kind === 'standby'
+          ? 1.5
+          : 2
   score -= Math.max(0, d.dutyHours - 6) * perHour
   // Turnarounds are the grind — four short legs beat you up more than one
   // long cruise of the same length.
@@ -102,7 +125,17 @@ function offReadiness(daysSinceDuty: number, lastDuty: ParsedDuty | null): numbe
   return clamp(Math.round(OFF_CEILING - severity * 55 * (1 - recovered)))
 }
 
-function dutyNote(d: ParsedDuty): string {
+const hhmm = (ms: number, zone: string) =>
+  new Intl.DateTimeFormat('en-GB', {
+    timeZone: zone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(ms))
+
+function dutyNote(d: ParsedDuty, homeTz: string): string {
+  if (d.kind === 'standby')
+    return `Standby · ${hhmm(d.reportUtc, homeTz)}–${hhmm(d.releaseUtc, homeTz)}`
   if (d.kind === 'simulator')
     return `Sim · ${Math.round(d.dutyHours)}h${d.code ? ` · ${d.code}` : ''}`
   if (d.kind === 'ground_training')
@@ -115,6 +148,21 @@ function dutyNote(d: ParsedDuty): string {
 }
 
 const isoUtcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+
+/** Calendar day of an instant, read in a given zone. */
+function isoInZone(ms: number, zone: string): string {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: zone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(new Date(ms))
+      .map((x) => [x.type, x.value]),
+  )
+  return `${p.year}-${p.month}-${p.day}`
+}
 
 /**
  * Parsed duties → one row per calendar day, including the days off between.
@@ -139,11 +187,45 @@ export function toRosterDays(result: ParseResult, importId: string): RosterDay[]
       restBeforeHours: Math.round(restBefore * 10) / 10,
       endsAt: d.endsAt,
       readiness: dutyReadiness(d, restBefore, result.homeBase, result.homeTz),
-      window: windowFor(d.dutyHours),
-      note: dutyNote(d),
+      window: windowFor(d, result.homeTz),
+      note: dutyNote(d, result.homeTz),
       importId,
     })
   })
+
+  /*
+   * Days a duty SPILLS into. A 22:35 report signs off at 06:20 the next
+   * morning; without this the roster's own day is marked and the morning after
+   * looks like a free day, which is exactly backwards — you land, you sleep.
+   * Marking them is also what reconciles the count with the roster's own
+   * "FLIGHT DAYS" statistic, which counts every calendar day a duty touches.
+   */
+  for (const d of duties) {
+    const endDate = isoInZone(d.releaseUtc, result.homeTz)
+    if (endDate === d.date || byDate.has(endDate)) continue
+    const away = d.endsAt && d.endsAt !== result.homeBase
+    const offHour = localHour(d.releaseUtc, result.homeTz)
+    // Report a layover landing in the clock he's actually living on, not the
+    // one back at base — "landed 09:20" for an 06:50 Vienna arrival is a lie.
+    const whereTz = (away && d.endsAt ? airportTz(d.endsAt) : null) ?? result.homeTz
+    byDate.set(endDate, {
+      date: endDate,
+      duty: true,
+      dutyType: d.kind,
+      endsAt: d.endsAt,
+      // Signed off in the small hours: the day is for sleeping. Later in the
+      // morning there's more of it left.
+      readiness: clamp(Math.round((offHour < 6 ? 35 : 55) - (away ? 8 : 0))),
+      window: 'full',
+      note: away
+        ? `Layover ${d.endsAt} · landed ${hhmm(
+            d.segments[d.segments.length - 1]?.arrUtc ?? d.releaseUtc,
+            whereTz,
+          )} local`
+        : `Off duty ${hhmm(d.releaseUtc, result.homeTz)}`,
+      importId,
+    })
+  }
 
   // Fill the days in between that aren't duties. Bounded by what the roster
   // actually covers — inventing days past the last printed column would be

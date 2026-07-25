@@ -229,9 +229,36 @@ pdf.js (~1.7 MB) is lazily imported AND excluded from the precache
 (`globIgnores`), then runtime-cached: installs stay lean, and the second import
 onward works offline.
 
-Verified against a generated CrewLink-layout PDF: 14.3h DOH-SIN with a night
-sign-off -> 21/none; its 5h return -> 70; a 16.5h two-sector day -> 31/none; a 5h
-sim -> 87; a 9.7h four-sector day -> 55/short; days off -> 95.
+**Validated against a real Qatar CrewLink roster** (Mar 2026, 31 columns). The
+PDF prints its own STATISTICS row, which gives independent ground truth:
+
+| metric | roster says | parser | |
+|---|---|---|---|
+| flight days | 16 | 16 | match |
+| stand-by days | 4 | 4 | match |
+| duty hours | 108:15 (excl. standby) | 101:42 | 30 min/duty, by definition |
+
+The grid reconstruction read all 31 columns correctly — every RPT, flight
+number, airport, time, `(+1)` marker, aircraft type and `PIC,REQ` annotation
+landed in the right day. Start-x and centre-x assignment give identical results,
+so the column bucketing has real margin.
+
+The duty-hours gap is exactly 30 minutes x 13 duties: Qatar credits 60 min
+post-flight, EASA (and therefore the port) uses 30. Not a parsing error, and
+left alone so the port stays faithful to its source.
+
+Three bugs the real roster exposed, all fixed:
+
+1. **Standby was invisible.** The original drops standby columns with the days
+   off, which is right for fatigue modelling and wrong for training — 4 days of
+   06:00-14:00 home standby were showing as free days inviting a heavy session.
+   Parsed as its own `standby` kind (a deliberate addition to the port).
+2. **Duties were dated by home-TZ conversion of the report time**, so a 22:35Z
+   report moved to the next day and left the actual duty day looking free. Now
+   uses the date printed on the column — what the roster says and the owner reads.
+3. **Days a duty spills into were unmarked.** A 22:35 report signs off at 06:20
+   the next morning; that morning was scoring 89 as a rest day. Spill days are
+   now marked, which is also what reconciles the count with FLIGHT DAYS 16.
 
 ## 📌 Wanted next (owner's requests)
 

@@ -57,10 +57,6 @@ const NON_FLYING = [
   'OFF',
   'GOFF',
   'DOFF',
-  'SBY',
-  'PSBY',
-  'STANDBY',
-  'PISY',
   'LVE',
   'LEAVE',
   'SICK',
@@ -69,13 +65,21 @@ const NON_FLYING = [
   'ROFF',
   'POFF',
 ]
+/**
+ * Standby. The original lumps these in with days off and drops the column,
+ * which is right for its purpose — there's no duty to model. For TRAINING it's
+ * the opposite of a day off: you have to stay contactable and fit to fly, and
+ * a 03:00–11:00 home standby owns the morning. Parsed as its own kind, which
+ * is a DELIBERATE addition to the port.
+ */
+const STANDBY_CODES = new Set(['PSBY', 'SBY', 'STANDBY', 'ASBY', 'PISY'])
 /** Metadata on a segment — the flight is still a normal flight. */
 const LINE_TRAINING = new Set(['X', 'U', 'UL', 'L', 'E', 'ZFT'])
 /** Operationally meaningful: relief crew / travelling as a passenger. */
 const ACTIVITY = new Set(['IR', 'DH'])
 const IGNORED = new Set(['REQ', 'PIC', 'SR', 'CB', 'SIM', 'GND', 'DOFF', 'PA'])
 
-export type DutyKind = 'flight' | 'simulator' | 'ground_training'
+export type DutyKind = 'flight' | 'simulator' | 'ground_training' | 'standby'
 
 export interface Segment {
   flight: string
@@ -178,11 +182,6 @@ function zonedToUtc(
   return utc
 }
 
-const iso = (ms: number, zone: string): string => {
-  const off = tzOffset(zone, ms)
-  return new Date(ms + off).toISOString().slice(0, 10)
-}
-
 /** "13:40(+1)" → {h, m, plusDays}. */
 function parseClock(s: string): { h: number; m: number; plus: number } | null {
   const plus = /\(\+(\d+)\)/.exec(s)
@@ -201,6 +200,14 @@ function looksLikeFlightNumber(line: string): boolean {
     !line.startsWith('(') &&
     (RE_FLIGHT_NUM.test(line) || RE_FLIGHT_PREFIXED.test(line))
   )
+}
+
+/** The date printed on the column — what the roster says, and what the owner
+ *  reads. Used in preference to converting the report time into home-base
+ *  time: for a 22:35Z report that conversion lands the duty on the NEXT day
+ *  and leaves the actual duty day looking free. */
+function colDate(col: DateColumn, ctx: Ctx): string {
+  return `${ctx.year}-${String(col.month).padStart(2, '0')}-${String(col.day).padStart(2, '0')}`
 }
 
 interface Ctx {
@@ -347,11 +354,15 @@ function detectTrainingCode(lines: string[]): string | null {
   return null
 }
 
-/** A training day: RPT, the code, then a start and end time at the base. */
-function parseTrainingDuty(
+/**
+ * A non-flying rostered block: RPT, a code, then a start and end time at base.
+ * Covers simulator, ground training and standby — they print identically.
+ */
+function parseBlockDuty(
   lines: string[],
   col: DateColumn,
   code: string,
+  kind: DutyKind,
   ctx: Ctx,
 ): ParsedDuty | null {
   const times: { h: number; m: number }[] = []
@@ -389,8 +400,8 @@ function parseTrainingDuty(
 
   const reportUtc = report ? at(report) : start
   return {
-    date: iso(reportUtc, ctx.homeTz),
-    kind: SIMULATOR_CODES.has(code) ? 'simulator' : 'ground_training',
+    date: colDate(col, ctx),
+    kind,
     code,
     reportUtc,
     releaseUtc: end,
@@ -405,11 +416,26 @@ function parseColumn(col: DateColumn, ctx: Ctx): ParsedDuty | null {
   const lines = col.lines.map((l) => l.trim()).filter(Boolean)
   if (!lines.length) return null
 
+  // Standby first: its column also carries an RPT, so the non-flying scan
+  // below would miss it and the flight scan would find nothing.
+  const standby = lines
+    .slice(0, 4)
+    .map((l) => l.trim().toUpperCase())
+    .find((l) => STANDBY_CODES.has(l))
+  if (standby) return parseBlockDuty(lines, col, standby, 'standby', ctx)
+
   const first = lines[0].toUpperCase()
   if (NON_FLYING.some((c) => first.includes(c))) return null
 
   const training = detectTrainingCode(lines)
-  if (training) return parseTrainingDuty(lines, col, training, ctx)
+  if (training)
+    return parseBlockDuty(
+      lines,
+      col,
+      training,
+      SIMULATOR_CODES.has(training) ? 'simulator' : 'ground_training',
+      ctx,
+    )
 
   let report: { h: number; m: number } | null = null
   for (const line of lines) {
@@ -438,9 +464,7 @@ function parseColumn(col: DateColumn, ctx: Ctx): ParsedDuty | null {
   if (reportUtc >= releaseUtc) releaseUtc = reportUtc + HOUR
 
   return {
-    // Anchored to the HOME-BASE calendar day, not the PDF column: a 00:10
-    // report at a layover in Brazil belongs to the Doha day it maps onto.
-    date: iso(reportUtc, ctx.homeTz),
+    date: colDate(col, ctx),
     kind: 'flight',
     reportUtc,
     releaseUtc,
