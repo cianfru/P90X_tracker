@@ -70,6 +70,18 @@ def _database_url() -> str:
         val = os.environ.get(var, "").strip()
         if val:
             return _normalize_dsn(val)
+    # Last resort: any env var holding a Postgres DSN. Hosting integrations let
+    # you choose the variable prefix (Vercel's storage integrations default to
+    # e.g. STORAGE_URL), so match on the value's scheme rather than its name.
+    # Prefer a pooled endpoint if several are present.
+    found = [
+        v.strip()
+        for v in os.environ.values()
+        if v.strip().startswith(("postgres://", "postgresql://"))
+    ]
+    if found:
+        pooled = [v for v in found if "-pooler." in v]
+        return _normalize_dsn((pooled or found)[0])
     return ""
 
 
