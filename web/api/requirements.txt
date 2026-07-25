@@ -1,0 +1,10 @@
+# Duplicate of ../requirements.txt, kept next to the function on purpose.
+#
+# Vercel resolves Python dependencies from the project root, but the previous
+# crash here was a path assumption that turned out to be wrong (a sibling
+# module that wasn't bundled). Having the file in both places removes the same
+# class of doubt for dependencies: whichever location the builder consults, it
+# finds them. Keep the two files in sync.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+asyncpg>=0.29
