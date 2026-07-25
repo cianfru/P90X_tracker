@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Clock, Plus, X } from 'lucide-react'
 import type { Program, Session, WorkoutSet, WorkoutTemplate } from '../db'
+import { CATALOG } from '../db'
 import { startOrResumeSession } from '../db/repo'
+import { planSchedule, type PlannedDay } from '../schedule/plan'
+import { todayISO } from '../lib/id'
 import { fmtTime } from '../lib/id'
 import { intensityColor, intensityLabel, type Intensity } from './intensity'
 import { Kpi } from './ui'
@@ -92,17 +95,49 @@ export function MonthTab({
     return m
   }, [live, intensity, nameFor, hasSets])
 
+  // The plan is derived, never stored — see schedule/plan.ts. Miss a day and
+  // the queue simply hasn't advanced, so everything shifts forward by itself.
+  const today = todayISO()
+  const plan = useMemo(
+    () =>
+      CATALOG.rotation
+        ? planSchedule(CATALOG.rotation, sessions, today, 28)
+        : [],
+    [sessions, today],
+  )
+  const planByDate = useMemo(
+    () => new Map(plan.map((p) => [p.date, p])),
+    [plan],
+  )
+  const upNext = plan.filter((p) => !p.done).slice(0, 4)
+
+  const nameOf = (ids: string[]) =>
+    ids.map((i) => templates.find((t) => t.id === i)?.name ?? i).join(' + ')
+
+  /* Start a planned day: create the session(s) for that date, then open the
+     logger on the first one that actually records reps. A day of pure cardio
+     just gets recorded. */
+  async function startPlanned(p: PlannedDay) {
+    let openId: string | null = null
+    for (const wid of p.workoutIds) {
+      const id = await startOrResumeSession(wid, p.date)
+      const t = templates.find((x) => x.id === wid)
+      if (!openId && t && !t.untracked) openId = id
+    }
+    if (openId) onStart(openId)
+  }
+
   // Default to the month of the most recent session.
   const latest = useMemo(
     () => live.map((s) => s.date).sort((a, b) => (a < b ? 1 : -1))[0],
     [live],
   )
+  // Open on the CURRENT month: the calendar now shows what's planned as well
+  // as what's done, so "now" is the useful place to land — not wherever the
+  // last session happened to be.
   const [ym, setYm] = useState(() => {
-    if (latest) {
-      const [y, m] = latest.split('-').map(Number)
-      return { y, m: m - 1 }
-    }
-    return { y: 2026, m: 0 }
+    const [y, m] = (today || latest || '2026-01').split('-').map(Number)
+    return { y, m: m - 1 }
   })
   const [selDay, setSelDay] = useState<string | null>(null)
   const [open, setOpen] = useState<{ id: string; score: number } | null>(null)
@@ -173,6 +208,57 @@ export function MonthTab({
 
   return (
     <div>
+      {/* What's due — derived from what's actually been logged, so a missed
+          day slides the rest forward instead of leaving a hole. */}
+      {upNext.length > 0 && (
+        <div className="mb-4">
+          <div className="eyebrow mb-2">Up next</div>
+          <div className="space-y-2">
+            {upNext.map((p, i) => {
+              const label = nameOf(p.workoutIds) || p.label
+              const isRest = p.kind === 'recovery'
+              return (
+                <button
+                  key={p.date}
+                  onClick={() => !isRest && startPlanned(p)}
+                  disabled={isRest}
+                  className={`press flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left ${
+                    i === 0
+                      ? 'border-[#34f5a0]/40 bg-[#34f5a0]/10'
+                      : 'border-hair bg-white/[0.02]'
+                  } ${isRest ? 'opacity-70' : ''}`}
+                >
+                  <span
+                    className={`nums flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-xl text-[10px] leading-none font-bold ${
+                      i === 0 ? 'bg-[#34f5a0] text-[#06140d]' : 'bg-white/[0.06] text-ink-3'
+                    }`}
+                  >
+                    <span className="text-[13px]">{p.date.slice(8)}</span>
+                    <span className="opacity-70">
+                      {new Date(p.date + 'T00:00')
+                        .toLocaleDateString('en-GB', { weekday: 'short' })
+                        .toUpperCase()}
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold capitalize">
+                      {label}
+                    </span>
+                    <span className="block text-[12px] text-ink-3">
+                      day {p.slotDay} · {p.label}
+                      {i === 0 ? ' · next' : ''}
+                    </span>
+                  </span>
+                  {!isRest && (
+                    <ChevronRight size={16} className="shrink-0 text-ink-3" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Month nav */}
       <div className="mb-4 flex items-center justify-between">
         <button
@@ -230,6 +316,8 @@ export function MonthTab({
             const date = iso(y, m, day)
             const dot = dayDot(day)
             const selected = selDay === date
+            const planned = !dot && planByDate.get(date)
+            const isToday = date === today
             return (
               <button
                 key={i}
@@ -240,14 +328,19 @@ export function MonthTab({
                     : dot
                       ? 'font-semibold text-ink'
                       : 'text-ink-3'
-                }`}
+                } ${isToday ? 'ring-1 ring-[#34f5a0]/50' : ''}`}
               >
                 {day}
-                {dot && (
+                {dot ? (
                   <span
                     className="mt-0.5 h-1.5 w-1.5 rounded-full"
                     style={{ background: dot.color }}
                   />
+                ) : planned && planned.kind !== 'recovery' ? (
+                  // Planned but not done yet — hollow, so it reads as intent.
+                  <span className="mt-0.5 h-1.5 w-1.5 rounded-full border border-ink-3/60" />
+                ) : (
+                  <span className="mt-0.5 h-1.5 w-1.5" />
                 )}
               </button>
             )
@@ -273,11 +366,37 @@ export function MonthTab({
               <Plus size={13} strokeWidth={2.8} /> Add workout
             </button>
           </div>
-          {selList.length === 0 && (
-            <p className="mb-2 text-[13px] text-ink-3">
-              Nothing logged this day.
-            </p>
-          )}
+          {selList.length === 0 &&
+            (planByDate.get(selDay) && selDay >= today ? (
+              (() => {
+                const p = planByDate.get(selDay)!
+                const label = nameOf(p.workoutIds) || p.label
+                return (
+                  <button
+                    onClick={() => p.kind !== 'recovery' && startPlanned(p)}
+                    disabled={p.kind === 'recovery'}
+                    className="press card mb-2 flex w-full items-center gap-3 border-dashed px-4 py-3 text-left disabled:opacity-70"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="eyebrow block text-ink-3">planned</span>
+                      <span className="mt-0.5 block truncate font-semibold capitalize">
+                        {label}
+                      </span>
+                      <span className="block text-[12px] text-ink-3">
+                        day {p.slotDay} · {p.label}
+                      </span>
+                    </span>
+                    {p.kind !== 'recovery' && (
+                      <ChevronRight size={16} className="shrink-0 text-ink-3" />
+                    )}
+                  </button>
+                )
+              })()
+            ) : (
+              <p className="mb-2 text-[13px] text-ink-3">
+                Nothing logged this day.
+              </p>
+            ))}
           <div className="space-y-2">
             {selList.map((s) => {
               const color = s.tracked
