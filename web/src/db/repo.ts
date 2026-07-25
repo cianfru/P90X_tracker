@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Exercise, Modifier, Session, WorkoutSet } from './types'
+import type { Exercise, Modifier, RosterDay, Session, WorkoutSet } from './types'
 import { getDeviceId, todayISO, uid } from '../lib/id'
 
 /*
@@ -187,4 +187,29 @@ export async function templateExercises(
 ): Promise<Exercise[]> {
   const rows = await db.exercises.bulkGet(exerciseIds)
   return rows.filter((e): e is Exercise => Boolean(e))
+}
+
+/*
+ * Roster days. Keyed by date, so importing a month simply overwrites those
+ * days — re-uploading a revised roster (which happens constantly) is the same
+ * operation as importing it the first time, with no duplicate rows and nothing
+ * to clean up first.
+ */
+
+/** Replace the imported days with a fresh set, returning how many landed. */
+export async function saveRosterDays(days: RosterDay[]): Promise<number> {
+  if (!days.length) return 0
+  await db.rosterDays.bulkPut(days)
+  return days.length
+}
+
+/** Drop every imported roster day (the "forget my roster" escape hatch). */
+export async function clearRosterDays(): Promise<void> {
+  await db.rosterDays.clear()
+}
+
+/** Imported days from `from` onward, oldest first. */
+export async function rosterDaysFrom(from: string): Promise<RosterDay[]> {
+  const rows = await db.rosterDays.where('date').aboveOrEqual(from).toArray()
+  return rows.sort((a, b) => (a.date < b.date ? -1 : 1))
 }

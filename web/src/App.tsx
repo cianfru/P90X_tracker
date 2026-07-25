@@ -28,6 +28,7 @@ import { Session } from './logger/Session'
 import { Account } from './logger/Account'
 import { Mixer } from './logger/Mixer'
 import type { Intensity as MixIntensity } from './logger/mixer'
+import { RosterImport } from './schedule/RosterImport'
 
 // Charts (Recharts) are heavy — load them only when the Monitor is opened so the
 // gym-side logger stays lightweight.
@@ -54,6 +55,7 @@ export default function App() {
   // A string opens the Mixer with its dial preset — used when the week is
   // behind budget and the app already knows how hard the session needs to be.
   const [showMixer, setShowMixer] = useState<false | true | MixIntensity>(false)
+  const [showRoster, setShowRoster] = useState(false)
   const [, bumpAccount] = useState(0)
   // Brief branded launch splash — fade it out shortly after mount.
   const [splash, setSplash] = useState<'show' | 'fade' | 'gone'>('show')
@@ -112,6 +114,10 @@ export default function App() {
         onChange={() => bumpAccount((n) => n + 1)}
       />
     )
+  }
+
+  if (showRoster) {
+    return <RosterImport onBack={() => setShowRoster(false)} />
   }
 
   if (showMixer) {
@@ -215,6 +221,7 @@ export default function App() {
               tab={view}
               onStart={setSessionId}
               onMix={(level) => setShowMixer(level ?? true)}
+              onRoster={() => setShowRoster(true)}
             />
           </Suspense>
         )}

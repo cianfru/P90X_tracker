@@ -221,6 +221,56 @@ export interface Rotation {
   blockBreak?: { program: Program; weeks: [number, number] }
 }
 
+/*
+ * Roster days — what the flying schedule does to a training week.
+ *
+ * Sourced from Aerowake (the owner's own fatigue-modelling service), which
+ * turns a roster PDF into an EASA-compliant Borbély two-process prediction. We
+ * deliberately keep only the handful of fields training cares about rather than
+ * mirroring its full response: this table answers "can I train that day, and
+ * how hard", nothing else. Everything richer stays in Aerowake, which is where
+ * it belongs.
+ */
+
+/** How much of a training session the day physically has room for. */
+export type TrainingWindow = 'full' | 'short' | 'none'
+
+export interface RosterDay {
+  /** YYYY-MM-DD in home-base local time — the primary key, one row per day. */
+  date: string
+  /** True when a duty is rostered; false for a day off. */
+  duty: boolean
+  /** 'flight' | 'simulator' | 'ground_training' — absent on days off. */
+  dutyType?: string
+  /** Report → release, hours. */
+  dutyHours?: number
+  /** Sectors flown that day. */
+  sectors?: number
+  /** Aerowake's worst-point alertness prediction for the duty, 0–100. */
+  minPerformance?: number
+  /** Accumulated sleep debt entering the day, hours. */
+  sleepDebt?: number
+  /** Predicted sleep that night, hours (rest days carry the recovery plan). */
+  sleepHours?: number
+  /** Aerowake's rest-day plan: 'recovery', 'post_duty_recovery', … */
+  strategy?: string
+  /** 0–1 — how much of the sleep debt this night is expected to repay. */
+  recoveryFraction?: number
+  /**
+   * Our derived verdict, 0–100: how much hard training this day can take.
+   * NOT Aerowake's performance score — that predicts cockpit alertness, this
+   * predicts training capacity, and a 10-hour duty can leave you sharp but
+   * with no evening left.
+   */
+  readiness: number
+  /** Whether there's TIME to train, independent of how fresh you are. */
+  window: TrainingWindow
+  /** Short human reason, shown on the day ("14h duty · 3 sectors"). */
+  note: string
+  /** Which roster import this row came from, so a re-upload can replace it. */
+  importId: string
+}
+
 export interface Session {
   id: string
   /** YYYY-MM-DD (local calendar day of the workout). */

@@ -1,5 +1,11 @@
 import Dexie, { type Table } from 'dexie'
-import type { Exercise, Session, WorkoutSet, WorkoutTemplate } from './types'
+import type {
+  Exercise,
+  RosterDay,
+  Session,
+  WorkoutSet,
+  WorkoutTemplate,
+} from './types'
 
 /** A row pending push to the backend (deduped by `key` = "table:rowId"). */
 export interface OutboxEntry {
@@ -31,6 +37,7 @@ export class P90XDatabase extends Dexie {
   sets!: Table<WorkoutSet, string>
   outbox!: Table<OutboxEntry, string>
   meta!: Table<MetaEntry, string>
+  rosterDays!: Table<RosterDay, string>
 
   constructor() {
     super('p90x')
@@ -44,6 +51,15 @@ export class P90XDatabase extends Dexie {
     this.version(2).stores({
       outbox: 'key, table',
       meta: 'key',
+    })
+    // v3 adds imported roster days. Keyed by date so a re-uploaded roster
+    // overwrites the same days rather than duplicating them; `importId` lets a
+    // whole import be rolled back. Deliberately NOT synced to the backend —
+    // it's derived data the owner can regenerate from the PDF at any time.
+    // `duty` is NOT indexed, for the same reason `deleted` isn't: IndexedDB
+    // keys can't be booleans. Filter it in the query instead.
+    this.version(3).stores({
+      rosterDays: 'date, importId',
     })
   }
 }

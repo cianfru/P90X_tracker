@@ -25,12 +25,15 @@ export function Monitor({
   tab,
   onStart,
   onMix,
+  onRoster,
 }: {
   tab: Tab
   /** Open the logger on a session (used to backdate one from the calendar). */
   onStart: (sessionId: string) => void
   /** Open the Mixer, optionally preset to the intensity the week still needs. */
   onMix: (level?: 'light' | 'medium' | 'hard') => void
+  /** Open the roster import screen. */
+  onRoster: () => void
 }) {
   const sessions = useLiveQuery(() => db.sessions.toArray())
   const sets = useLiveQuery(() => db.sets.toArray())
@@ -133,6 +136,7 @@ export function Monitor({
           templates={templates ?? []}
           onStart={onStart}
           onMix={onMix}
+          onRoster={onRoster}
           sessions={sessions ?? []}
           sets={sets ?? []}
           intensity={intensity}

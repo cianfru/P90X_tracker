@@ -1,4 +1,4 @@
-import type { Rotation, Session } from '../db'
+import type { Rotation, RosterDay, Session, TrainingWindow } from '../db'
 import { computeStaleness } from './staleness'
 
 /*
@@ -31,6 +31,29 @@ export interface PlannedDay {
   done: boolean
   /** True for the first not-yet-done day — "what's next". */
   next: boolean
+  /** Roster context for that date, when a roster has been imported. */
+  roster?: RosterAdvice
+}
+
+/**
+ * What the roster says about a planned day. ADVISORY by design: the rotation
+ * still owns the plan and nothing is silently moved. Fifteen years of training
+ * around a flying schedule beats any model at knowing what's actually doable,
+ * so this surfaces the conflict and the alternative, then gets out of the way.
+ */
+export interface RosterAdvice {
+  /** 0–100 training capacity for the day. */
+  readiness: number
+  window: TrainingWindow
+  /** Short reason ("14h duty · 3 sectors"). */
+  note: string
+  duty: boolean
+  /**
+   * Set when the slot's current pick looks too much for the day. Names what to
+   * do instead — a lighter option from the same slot, or moving the day on.
+   */
+  clash?: 'heavy-day' | 'no-window' | 'tired'
+  suggestion?: string
 }
 
 const addDays = (iso: string, n: number): string => {
@@ -87,11 +110,68 @@ function currentChoices(
  * Days already logged are marked done, so the view can show the week so far
  * alongside what's coming.
  */
+/** Readiness at or above this can carry any slot in the rotation. */
+const GOOD_DAY = 65
+/** Below this the day is a write-off for anything heavy. */
+const WRECKED = 45
+
+/**
+ * Roster advice for one planned day.
+ *
+ * Recovery slots are never flagged — a rest day on a brutal duty day is the
+ * system working, not a conflict.
+ */
+function adviseDay(
+  r: RosterDay,
+  kind: SlotKind,
+  workoutIds: string[],
+  betterDay: string | null,
+): RosterAdvice {
+  const base: RosterAdvice = {
+    readiness: r.readiness,
+    window: r.window,
+    note: r.note,
+    duty: r.duty,
+  }
+  if (kind === 'recovery' || !workoutIds.length) return base
+
+  const moveTo = betterDay
+    ? ` — better on ${betterDay.slice(8)}/${betterDay.slice(5, 7)}`
+    : ''
+
+  if (r.window === 'none') {
+    return {
+      ...base,
+      clash: 'no-window',
+      suggestion: `No room after this duty. Skip it and the week slides forward${moveTo}.`,
+    }
+  }
+  if (r.readiness < WRECKED) {
+    return {
+      ...base,
+      clash: 'tired',
+      suggestion: `You'll be flat. Take the rest day early, or do day 6's light session${moveTo}.`,
+    }
+  }
+  if (r.readiness < GOOD_DAY && kind === 'work') {
+    return {
+      ...base,
+      clash: 'heavy-day',
+      suggestion:
+        workoutIds.length > 1
+          ? 'Half a tank — do one of the two, not both.'
+          : `Half a tank — go lighter than usual, or trade with a fresher day${moveTo}.`,
+    }
+  }
+  return base
+}
+
 export function planSchedule(
   rotation: Rotation,
   sessions: Session[],
   from: string,
   count = 14,
+  roster: RosterDay[] = [],
 ): PlannedDay[] {
   const live = sessions
     .filter((s) => !s.deleted)
@@ -123,6 +203,17 @@ export function planSchedule(
   const lastDay = past.length ? Math.max(...past[past.length - 1][1]) : 0
   let cursor = (lastDay % cycle) + 1
 
+  const byDate = new Map(roster.map((r) => [r.date, r]))
+  /** Nearest upcoming day that could actually take a real session. */
+  const nextGoodDay = (after: string): string | null => {
+    for (let k = 1; k <= 4; k++) {
+      const d = addDays(after, k)
+      const r = byDate.get(d)
+      if (r && r.window !== 'none' && r.readiness >= GOOD_DAY) return d
+    }
+    return null
+  }
+
   const out: PlannedDay[] = []
   let markedNext = false
   for (let i = 0; i < count; i++) {
@@ -135,14 +226,25 @@ export function planSchedule(
     const isNext = !done && !markedNext
     if (isNext) markedNext = true
 
+    const kind = kinds.get(slotDay) ?? 'work'
+    const workoutIds = choices.get(slotDay) ?? []
+    const r = byDate.get(date)
+
     out.push({
       date,
       slotDay,
       label: labels.get(slotDay) ?? `Day ${slotDay}`,
-      kind: kinds.get(slotDay) ?? 'work',
-      workoutIds: choices.get(slotDay) ?? [],
+      kind,
+      workoutIds,
       done,
       next: isNext,
+      // Advice is for days still ahead — there's nothing to advise about a
+      // session already logged.
+      roster: r
+        ? done
+          ? { readiness: r.readiness, window: r.window, note: r.note, duty: r.duty }
+          : adviseDay(r, kind, workoutIds, nextGoodDay(date))
+        : undefined,
     })
     cursor = (slotDay % cycle) + 1
   }

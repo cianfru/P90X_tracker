@@ -178,6 +178,47 @@ Verified against the real 791-session history: a fresh Monday asks ~71 × 2; a
 week with one 11-point session banked asks ~66 × 2; 89/110 with one day left
 asks 21; 2019's 3-session weeks self-calibrate to ~25 × 3.
 
+## ✈️ Roster import — Aerowake bridge (built 2026-07-25)
+
+Phase 2 of the scheduler. Upload the month's roster PDF in the app; the calendar
+comes back knowing which days can take a session.
+
+**We do not parse the PDF.** The owner already runs Aerowake
+(`github.com/cianfru/aerowake`) — an EASA fatigue-risk service whose
+`fatigue-tool/parsers/` handles Qatar CrewLink + easyJet + CSV (~3,000 lines) and
+then runs a Borbély two-process model over the result. Re-implementing either in
+TypeScript would be absurd, so `web/src/schedule/aerowake.ts` POSTs the PDF to
+`aerowake-production.up.railway.app/api/analyze` and keeps only what training
+needs. Auth there is optional (`get_optional_user`), so no login is required and
+nothing is persisted on Aerowake's side.
+
+This is the ONLY networked action in the app and it's once a month. Everything
+downstream reads `db.rosterDays` (Dexie v3, keyed by date so a re-upload just
+overwrites), so the schedule still works with no signal.
+
+**Readiness ≠ Aerowake's performance score.** `min_performance` predicts COCKPIT
+ALERTNESS; training asks a different question. A 13-hour duty can leave you sharp
+and with no evening left, and a short standby can score badly and still leave you
+free. So capacity and available time are tracked separately — `readiness` (0–100,
+calibrated against the app's own intensity scale) and `window`
+(`full`/`short`/`none`). Duty days charge ~5 pts/hour beyond 6h, 4 pts/sector
+after the first, and scale the lot by sleep debt; rest days start from predicted
+sleep and lift with `cumulative_recovery_fraction`, with a penalty on the first
+night after landing.
+
+**Advisory, never automatic** (the owner's explicit choice). The rotation still
+owns the plan; `RosterAdvice` annotates a day with a clash + a concrete
+alternative, including the nearest upcoming day that could actually take the
+session. Because the plan is derived, "skip it" already slides the week forward —
+so the advice and the mechanism agree.
+
+Verified against a simulated Qatar long-haul month: a 17.5h ULR → 0/none; its
+first recovery night → 20; third night home → 87; an 11h 4-sector day → 24/short;
+an 8h single-sector day → 73.
+
+**Needed to go live:** add the app's origin to `CORS_ORIGINS` on Aerowake's
+Railway service (env var — no code change in that repo).
+
 ## 📌 Wanted next (owner's requests)
 
 - **Better map quality — evaluate Mapbox** in place of the current CARTO raster

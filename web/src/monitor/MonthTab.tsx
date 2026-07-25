@@ -1,10 +1,21 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Clock, Plus, Shuffle, X } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Plane,
+  Plus,
+  Shuffle,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import type { Program, Session, WorkoutSet, WorkoutTemplate } from '../db'
-import { CATALOG } from '../db'
+import { CATALOG, db } from '../db'
 import { startOrResumeSession } from '../db/repo'
 import { planSchedule, type PlannedDay } from '../schedule/plan'
 import { computeWeekLoad, neededIntensity } from '../schedule/weekLoad'
+import { readinessColor } from '../schedule/aerowake'
 import { todayISO } from '../lib/id'
 import { fmtDayMon, fmtTime } from '../lib/id'
 import { intensityColor, intensityLabel, type Intensity } from './intensity'
@@ -61,6 +72,7 @@ export function MonthTab({
   templates,
   onStart,
   onMix,
+  onRoster,
 }: {
   sessions: Session[]
   sets: WorkoutSet[]
@@ -71,6 +83,8 @@ export function MonthTab({
   onStart: (sessionId: string) => void
   /** Open the Mixer, preset to the intensity this week still needs. */
   onMix: (level?: 'light' | 'medium' | 'hard') => void
+  /** Open the roster import screen. */
+  onRoster: () => void
 }) {
   const live = useMemo(() => sessions.filter((s) => !s.deleted), [sessions])
 
@@ -112,10 +126,18 @@ export function MonthTab({
   // The plan is derived, never stored — see schedule/plan.ts. Miss a day and
   // the queue simply hasn't advanced, so everything shifts forward by itself.
   const today = todayISO()
+  // Imported roster days, when there are any — they annotate the plan with how
+  // much each day can actually take. Advisory only; the rotation still leads.
+  const rosterQuery = useLiveQuery(() => db.rosterDays.toArray())
+  // Held in a memo, not `?? []` inline: a fresh array literal every render
+  // would re-derive the whole 28-day plan on every render.
+  const rosterDays = useMemo(() => rosterQuery ?? [], [rosterQuery])
   const plan = useMemo(
     () =>
-      CATALOG.rotation ? planSchedule(CATALOG.rotation, sessions, today, 28) : [],
-    [sessions, today],
+      CATALOG.rotation
+        ? planSchedule(CATALOG.rotation, sessions, today, 28, rosterDays)
+        : [],
+    [sessions, today, rosterDays],
   )
   const planByDate = useMemo(() => new Map(plan.map((p) => [p.date, p])), [plan])
   const upNext = plan.filter((p) => !p.done).slice(0, 4)
@@ -315,7 +337,18 @@ export function MonthTab({
           day slides the rest forward instead of leaving a hole. */}
       {upNext.length > 0 && (
         <div className="mb-4">
-          <div className="eyebrow mb-2">Up next</div>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span className="eyebrow">Up next</span>
+            {/* Roster import. Once a month, and the only networked action in
+                the app — everything else works with no signal. */}
+            <button
+              onClick={onRoster}
+              className="press flex items-center gap-1.5 rounded-full border border-[#33cbff]/35 bg-[#33cbff]/10 px-3 py-1 text-[11px] font-bold text-[#33cbff]"
+            >
+              <Plane size={12} />
+              {rosterDays.length ? 'Roster' : 'Add roster'}
+            </button>
+          </div>
           <div className="space-y-2">
             {upNext.map((p, i) => {
               const label = nameOf(p.workoutIds) || p.label
@@ -353,6 +386,29 @@ export function MonthTab({
                       day {p.slotDay} · {p.label}
                       {i === 0 ? ' · next' : ''}
                     </span>
+                    {/* Roster context, when a roster has been imported. The
+                        rotation still leads — this only says what the day
+                        costs. */}
+                    {p.roster && (
+                      <span className="mt-1 flex items-center gap-1.5 text-[11.5px]">
+                        {p.roster.duty ? (
+                          <Plane size={11} className="shrink-0 text-ink-3" />
+                        ) : null}
+                        <span className="truncate text-ink-3">{p.roster.note}</span>
+                        <span
+                          className="nums shrink-0 font-bold"
+                          style={{ color: readinessColor(p.roster.readiness) }}
+                        >
+                          {p.roster.readiness}
+                        </span>
+                      </span>
+                    )}
+                    {p.roster?.suggestion && (
+                      <span className="mt-1 flex items-start gap-1.5 text-[11.5px] font-semibold text-amber-300">
+                        <TriangleAlert size={11} className="mt-0.5 shrink-0" />
+                        <span>{p.roster.suggestion}</span>
+                      </span>
+                    )}
                   </span>
                   {!isRest && (
                     <ChevronRight size={16} className="shrink-0 text-ink-3" />
