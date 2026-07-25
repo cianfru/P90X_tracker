@@ -47,6 +47,35 @@ at the top.
     wedging every later backup. Fixed: the guard self-heals after 90s and
     requests now time out after 25s.
 
+## 🔧 Deploying the API — gotchas already hit (so we don't re-hit them)
+
+The sync API is Python serverless functions in `web/api/`, inside the SAME
+Vercel project as the PWA (`/api/*` on the app's own origin). Four failures we
+worked through, in order:
+
+1. **"No Production Deployment"** — a separate Vercel project with Root
+   Directory = `api` can't work: Vercel looks for functions in an `api/` dir
+   *relative to the project root*. Fixed by colocating as `web/api/`.
+2. **`/api/health` opened the app instead of JSON** — the service worker's
+   `navigateFallback` answered any typed URL with the cached app shell. Fixed
+   with `navigateFallbackDenylist: [/^\/api\//]`. _Testing tip: a private
+   window bypasses the service worker entirely._
+3. **`FUNCTION_INVOCATION_FAILED` / `ModuleNotFoundError: No module named
+   '_app'`** — serverless builders don't reliably bundle sibling modules next
+   to the entrypoint. Fixed by making the API ONE self-contained
+   `web/api/index.py` (schema DDL embedded, no local imports). **Don't
+   reintroduce helper modules next to index.py.**
+4. **Stale builds** — Vercel's **Redeploy** replays that deployment's OWN
+   commit, so it can never pick up a newer fix. Trigger a genuine new build
+   (push) instead, and confirm the deployment's commit hash.
+
+Also: Production Branch should be **`main`** (it was building from the working
+branch `claude/eloquent-pasteur-o7drkn`, which will eventually be deleted).
+
+Diagnosing a deploy: `/api/health` returns `{ok, db, tokens}` (+ `config_error`
+if `SYNC_TOKENS` is malformed) — it names which env var didn't land, without
+revealing values.
+
 ## ⏳ Pending: YOUR actions (away-from-computer to-do)
 
 1. **Deploy the Postgres backend** — runbook: `docs/deploy-vercel-neon.md`.
