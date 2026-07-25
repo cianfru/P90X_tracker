@@ -53,7 +53,9 @@ const MIN_THRESHOLD = 4
 const DEFAULT_THRESHOLD = 6
 
 const percentile = (sorted: number[], p: number): number =>
-  sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] : 0
+  sorted.length
+    ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))]
+    : 0
 
 /** Split the rotation into the units that can independently go stale. Days 1+3
  *  merge into one pair unit; flex and recovery days are excluded — day 6 is
@@ -134,12 +136,12 @@ export function computeStaleness(
 
     const current = runs[runs.length - 1]
     // Learn from COMPLETED runs only — the ongoing one is what we're judging.
-    const past = runs.slice(0, -1).map((r) => r.n).sort((a, b) => a - b)
+    const past = runs
+      .slice(0, -1)
+      .map((r) => r.n)
+      .sort((a, b) => a - b)
     const typical = past.length ? percentile(past, 0.9) : null
-    const threshold = Math.max(
-      MIN_THRESHOLD,
-      typical ?? DEFAULT_THRESHOLD,
-    )
+    const threshold = Math.max(MIN_THRESHOLD, typical ?? DEFAULT_THRESHOLD)
 
     return {
       ...unit,
@@ -162,10 +164,7 @@ export function computeStaleness(
 }
 
 /** Human-readable workout names for an option. */
-export function optionNames(
-  ids: string[],
-  templates: WorkoutTemplate[],
-): string {
+export function optionNames(ids: string[], templates: WorkoutTemplate[]): string {
   const byId = new Map(templates.map((t) => [t.id, t.name]))
   return ids.map((id) => byId.get(id) ?? id).join(' + ')
 }

@@ -4,15 +4,14 @@ import { ChevronLeft, Plane, Trash2, Upload } from 'lucide-react'
 import { db } from '../db'
 import { clearRosterDays, saveRosterDays } from '../db/repo'
 import { useSwipeBack } from '../lib/gestures'
-import { analyseRoster, readinessColor, readinessLabel } from './aerowake'
+import { importRosterPdf, readinessColor, readinessLabel } from './roster'
 
 /*
  * Roster import — upload the month's roster PDF, get a training-aware calendar.
  *
- * The PDF goes to Aerowake, which parses it and runs the fatigue model; we keep
- * only the per-day capacity it implies. This is the one screen in the app that
- * needs a connection, and it's a once-a-month action — nothing about logging or
- * viewing the schedule ever touches the network.
+ * Parsed entirely on-device: the file is read in the browser, never uploaded
+ * anywhere. Works in the crew bus with no signal, and the roster (which is
+ * personal, rostered work data) never leaves the phone.
  */
 
 const ACCENT = '#33cbff'
@@ -23,13 +22,10 @@ const TZ_KEY = 'p90x.roster.tz'
 const DEFAULT_BASE = 'DOH'
 const DEFAULT_TZ = 'Asia/Qatar'
 
-const thisMonth = () => new Date().toISOString().slice(0, 7)
-
 export function RosterImport({ onBack }: { onBack: () => void }) {
   const days = useLiveQuery(() => db.rosterDays.toArray()) ?? []
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [month, setMonth] = useState(thisMonth)
   const [base, setBase] = useState(
     () => localStorage.getItem(BASE_KEY) ?? DEFAULT_BASE,
   )
@@ -37,6 +33,7 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<string | null>(null)
+  const [notes, setNotes] = useState<string[]>([])
 
   useSwipeBack(onBack)
 
@@ -44,27 +41,30 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
     setBusy(true)
     setError(null)
     setResult(null)
+    setNotes([])
     try {
       localStorage.setItem(BASE_KEY, base)
       localStorage.setItem(TZ_KEY, tz)
-      const r = await analyseRoster(file, {
-        month,
+      const r = await importRosterPdf(file, {
         homeBase: base.trim().toUpperCase(),
-        homeTimezone: tz.trim(),
+        homeTz: tz.trim(),
       })
       await saveRosterDays(r.days)
       setResult(
-        `${r.month}: ${r.dutyDays} duty day${r.dutyDays === 1 ? '' : 's'}, ${r.restDays} off`,
+        `${r.dutyDays} duty day${r.dutyDays === 1 ? '' : 's'}, ${r.offDays} off · times read as ${r.basis}`,
       )
+      // Surface what the parser wasn't sure about rather than hiding it — a
+      // silently-wrong roster is worse than a flagged one.
+      setNotes([
+        ...r.warnings,
+        ...(r.unknownAirports.length
+          ? [
+              `Unknown airport code${r.unknownAirports.length > 1 ? 's' : ''}: ${r.unknownAirports.join(', ')} — treated as UTC.`,
+            ]
+          : []),
+      ])
     } catch (e) {
-      // Offline is the likeliest failure and deserves a plain explanation
-      // rather than a stack-flavoured one.
-      const msg = e instanceof Error ? e.message : String(e)
-      setError(
-        /fetch|network|failed to fetch/i.test(msg)
-          ? "Couldn't reach Aerowake — check your connection and try again."
-          : msg,
-      )
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -101,16 +101,10 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="card mt-5 space-y-3 p-4">
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="eyebrow mb-1 block">Month</span>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="nums w-full rounded-xl border border-hair bg-white/[0.04] px-3 py-2 text-sm"
-            />
-          </label>
+        {/* Base + timezone only. The month and the time basis come out of the
+            PDF header — asking for what the file already says is just another
+            thing to get wrong. */}
+        <div className="grid grid-cols-[7rem_1fr] gap-3">
           <label className="block">
             <span className="eyebrow mb-1 block">Home base</span>
             <input
@@ -121,21 +115,21 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
               className="nums w-full rounded-xl border border-hair bg-white/[0.04] px-3 py-2 text-sm uppercase"
             />
           </label>
+          <label className="block">
+            <span className="eyebrow mb-1 block">Base timezone</span>
+            <input
+              value={tz}
+              onChange={(e) => setTz(e.target.value)}
+              placeholder="Asia/Qatar"
+              className="w-full rounded-xl border border-hair bg-white/[0.04] px-3 py-2 text-sm"
+            />
+          </label>
         </div>
-        <label className="block">
-          <span className="eyebrow mb-1 block">Base timezone</span>
-          <input
-            value={tz}
-            onChange={(e) => setTz(e.target.value)}
-            placeholder="Asia/Qatar"
-            className="w-full rounded-xl border border-hair bg-white/[0.04] px-3 py-2 text-sm"
-          />
-        </label>
 
         <input
           ref={fileRef}
           type="file"
-          accept=".pdf,.csv,application/pdf,text/csv"
+          accept=".pdf,application/pdf"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0]
@@ -149,12 +143,12 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
           style={{ background: ACCENT, color: '#04121a' }}
         >
           <Upload size={16} />
-          {busy ? 'Analysing…' : 'Upload roster PDF'}
+          {busy ? 'Reading…' : 'Upload roster PDF'}
         </button>
 
         {busy && (
           <p className="text-center text-[12px] text-ink-3">
-            Parsing and running the fatigue model — a few seconds.
+            Reading the grid on this device — the file is never uploaded.
           </p>
         )}
         {error && (
@@ -167,6 +161,14 @@ export function RosterImport({ onBack }: { onBack: () => void }) {
             Imported {result}
           </p>
         )}
+        {notes.map((n) => (
+          <p
+            key={n}
+            className="rounded-xl border border-amber-400/30 bg-amber-400/[0.08] px-3 py-2 text-[12.5px] text-amber-300"
+          >
+            {n}
+          </p>
+        ))}
       </div>
 
       {days.length > 0 && (

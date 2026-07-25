@@ -55,6 +55,10 @@ export default defineConfig({
         clientsClaim: true,
         // Cache the app shell so the logger opens instantly and works with no signal.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // pdf.js (~1.7 MB across chunk + worker) belongs to the once-a-month
+        // roster import. Precaching it would tax every install forever for a
+        // screen most opens never reach; it's runtime-cached below instead.
+        globIgnores: ['**/pdf*.{js,mjs}'],
         navigateFallback: '/index.html',
         // The sync API is served from /api on this same origin. Without this
         // the app-shell fallback answers any /api URL opened directly in the
@@ -71,6 +75,16 @@ export default defineConfig({
             options: {
               cacheName: 'p90x-history',
               expiration: { maxEntries: 1 },
+            },
+          },
+          // Fetched on first roster import and cached from then on, so the
+          // second import works with no signal like the rest of the app.
+          {
+            urlPattern: /\/assets\/pdf[.-][^/]*\.m?js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'p90x-pdfjs',
+              expiration: { maxEntries: 4 },
             },
           },
         ],

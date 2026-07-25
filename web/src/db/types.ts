@@ -224,12 +224,10 @@ export interface Rotation {
 /*
  * Roster days — what the flying schedule does to a training week.
  *
- * Sourced from Aerowake (the owner's own fatigue-modelling service), which
- * turns a roster PDF into an EASA-compliant Borbély two-process prediction. We
- * deliberately keep only the handful of fields training cares about rather than
- * mirroring its full response: this table answers "can I train that day, and
- * how hard", nothing else. Everything richer stays in Aerowake, which is where
- * it belongs.
+ * Read straight off the roster PDF on-device (see schedule/crewlink.ts). Only
+ * what the parser can actually see is stored: duty hours, sectors, rest gaps.
+ * No inferred physiology — predicting alertness from sleep pressure is a
+ * serious discipline and not something to fake in a workout app.
  */
 
 /** How much of a training session the day physically has room for. */
@@ -246,26 +244,15 @@ export interface RosterDay {
   dutyHours?: number
   /** Sectors flown that day. */
   sectors?: number
-  /** Aerowake's worst-point alertness prediction for the duty, 0–100. */
-  minPerformance?: number
-  /** Accumulated sleep debt entering the day, hours. */
-  sleepDebt?: number
-  /** Predicted sleep that night, hours (rest days carry the recovery plan). */
-  sleepHours?: number
-  /** Aerowake's rest-day plan: 'recovery', 'post_duty_recovery', … */
-  strategy?: string
-  /** 0–1 — how much of the sleep debt this night is expected to repay. */
-  recoveryFraction?: number
-  /**
-   * Our derived verdict, 0–100: how much hard training this day can take.
-   * NOT Aerowake's performance score — that predicts cockpit alertness, this
-   * predicts training capacity, and a 10-hour duty can leave you sharp but
-   * with no evening left.
-   */
+  /** Gap between the previous duty's release and this one's report, hours. */
+  restBeforeHours?: number
+  /** Airport the duty ends at — anything but home base means a hotel. */
+  endsAt?: string
+  /** Derived 0–100: how much hard training the day has room for. */
   readiness: number
   /** Whether there's TIME to train, independent of how fresh you are. */
   window: TrainingWindow
-  /** Short human reason, shown on the day ("14h duty · 3 sectors"). */
+  /** Short human reason, shown on the day ("14h duty · 3 sectors · DOH–SIN"). */
   note: string
   /** Which roster import this row came from, so a re-upload can replace it. */
   importId: string

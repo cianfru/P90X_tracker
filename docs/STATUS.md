@@ -178,46 +178,60 @@ Verified against the real 791-session history: a fresh Monday asks ~71 × 2; a
 week with one 11-point session banked asks ~66 × 2; 89/110 with one day left
 asks 21; 2019's 3-session weeks self-calibrate to ~25 × 3.
 
-## ✈️ Roster import — Aerowake bridge (built 2026-07-25)
+## ✈️ Roster import — on-device PDF parser (built 2026-07-25)
 
 Phase 2 of the scheduler. Upload the month's roster PDF in the app; the calendar
-comes back knowing which days can take a session.
+comes back knowing which days can take a session. **Parsed entirely on-device —
+the file never leaves the phone.**
 
-**We do not parse the PDF.** The owner already runs Aerowake
-(`github.com/cianfru/aerowake`) — an EASA fatigue-risk service whose
-`fatigue-tool/parsers/` handles Qatar CrewLink + easyJet + CSV (~3,000 lines) and
-then runs a Borbély two-process model over the result. Re-implementing either in
-TypeScript would be absurd, so `web/src/schedule/aerowake.ts` POSTs the PDF to
-`aerowake-production.up.railway.app/api/analyze` and keeps only what training
-needs. Auth there is optional (`get_optional_user`), so no login is required and
-nothing is persisted on Aerowake's side.
+`web/src/schedule/crewlink.ts` is a TypeScript port of Aerowake's
+`fatigue-tool/parsers/qatar_crewlink_parser.py` — the pattern recognition only,
+which is the part that took a long time to get right. It reads any CrewLink-style
+grid roster (Qatar, Emirates, Etihad): each date is a column, the day stacked
+beneath it, and a flight segment is the exact five-line sequence
+`flightNo / dep / HH:MM / arr / HH:MM` followed by trailing tokens.
 
-This is the ONLY networked action in the app and it's once a month. Everything
-downstream reads `db.rosterDays` (Dexie v3, keyed by date so a re-upload just
-overwrites), so the schedule still works with no signal.
+Subtleties kept from the original:
 
-**Readiness ≠ Aerowake's performance score.** `min_performance` predicts COCKPIT
-ALERTNESS; training asks a different question. A 13-hour duty can leave you sharp
-and with no evening left, and a short standby can score badly and still leave you
-free. So capacity and available time are tracked separately — `readiness` (0–100,
-calibrated against the app's own intensity scale) and `window`
-(`full`/`short`/`none`). Duty days charge ~5 pts/hour beyond 6h, 4 pts/sector
-after the first, and scale the lot by sleep debt; rest days start from predicted
-sleep and lift with `cumulative_recovery_fraction`, with a penalty on the first
-night after landing.
+- `RPT` matched tolerantly (`R\s*P\s*T\s*:`) — text extraction wedges spaces in.
+- `(+1)` on an arrival = next day; a missing marker is inferred when arrival <=
+  departure.
+- Layover continuation: a column with no RPT whose first departure matches the
+  previous duty's (non-home-base) arrival merges into that duty.
+- Trailing tokens consumed carefully — a bare `359` is an aircraft type unless
+  it is the flight number opening the next segment.
+- Report after first departure => the report belongs to the previous day.
+- Non-flying codes (OFF/SBY/LVE/...), simulator codes (OPTR/FFS/...) and ground
+  training codes (EBTGR/TMTG/...) classified as in the original.
+- Time basis (`local` / `zulu` / `homebase`) auto-detected from the header.
 
-**Advisory, never automatic** (the owner's explicit choice). The rotation still
-owns the plan; `RosterAdvice` annotates a day with a clash + a concrete
-alternative, including the nearest upcoming day that could actually take the
-session. Because the plan is derived, "skip it" already slides the week forward —
-so the advice and the mechanism agree.
+**One deliberate deviation**, flagged in the code: continuation merging is also
+bounded to a <=6h gap. A continuation is by definition one duty period carried
+past midnight, so it cannot contain a night's rest — without the bound a layover
+whose return leg prints no RPT merged into a single 43-hour "duty".
 
-Verified against a simulated Qatar long-haul month: a 17.5h ULR → 0/none; its
-first recovery night → 20; third night home → 87; an 11h 4-sector day → 24/short;
-an 8h single-sector day → 73.
+**`web/src/schedule/rosterPdf.ts`** replaces pdfplumber's ruling-line table
+detection, which pdf.js has no equivalent of. It rebuilds the grid from text
+COORDINATES: the densest y-band of date-shaped runs is the header row, its
+x-positions become column anchors, and every other run drops into the nearest
+column within 0.6x the median column gap. Arguably more robust than the original,
+since it does not care whether the PDF draws its borders.
 
-**Needed to go live:** add the app's origin to `CORS_ORIGINS` on Aerowake's
-Railway service (env var — no code change in that repo).
+Airport timezones ship with the app: all 7,883 IATA codes interned to 359 zone
+names, 83 KB raw / 31 KB gzipped (`airport-tz.json`).
+
+**No fatigue model.** Aerowake's Borbely two-process model, EASA FDP limits and
+sleep modelling are its product and stay there. Readiness here is derived only
+from what the parser can see — duty hours, sectors, rest gaps, hotel nights, and
+what time you signed off — and says so in the code.
+
+pdf.js (~1.7 MB) is lazily imported AND excluded from the precache
+(`globIgnores`), then runtime-cached: installs stay lean, and the second import
+onward works offline.
+
+Verified against a generated CrewLink-layout PDF: 14.3h DOH-SIN with a night
+sign-off -> 21/none; its 5h return -> 70; a 16.5h two-sector day -> 31/none; a 5h
+sim -> 87; a 9.7h four-sector day -> 55/short; days off -> 95.
 
 ## 📌 Wanted next (owner's requests)
 
