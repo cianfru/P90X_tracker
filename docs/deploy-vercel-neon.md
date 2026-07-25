@@ -1,96 +1,101 @@
-# Deploy the sync backend — Vercel + Neon
+# Deploy the sync backend — Neon (one Vercel project)
 
-This is the recommended backend: **Neon** (free serverless Postgres) for
-storage, the **FastAPI app in `/api`** deployed as a **Vercel Python function**
-for compute. One ecosystem, free hobby tiers, nothing always-on to maintain, and
-because storage lives on Neon the compute host is swappable later.
+Storage is **Neon** (free serverless Postgres). Compute is the FastAPI app in
+`web/api/`, which ships as **Python serverless functions inside the existing
+web project** — so there is **only ONE Vercel project**, and the API answers on
+the app's own domain under `/api`:
 
-The web app talks to it via **Account → Sync server** (URL + a member token). No
-rebuild of the web app is needed to switch backends.
+```
+https://p90xtracker.vercel.app/          →  the PWA
+https://p90xtracker.vercel.app/api/health →  the sync API
+```
+
+Same origin means **no CORS to configure and no second URL to paste** — the app
+already knows where its server is. You only need a member token.
 
 ---
 
-## 1. Create the database (Neon)
+## 1. Create the database (Neon) — ~2 min
 
-1. Sign up at <https://neon.tech> and create a **Project** (pick the region
-   closest to you). It creates a database — name it `p90x` if asked.
-2. Open **Connection Details** and copy the **Pooled connection** string. It
-   looks like:
-   `postgresql://user:pass@ep-xxxx-pooler.<region>.aws.neon.tech/p90x?sslmode=require`
-   - ⚠️ Use the **pooled** one (host contains `-pooler`). Serverless functions
-     open many short connections; the pooler is what keeps Neon from running out.
-3. That's it — the tables are created automatically on the first request (the
-   app runs `schema.sql` on startup).
+1. Sign up at <https://neon.tech>, create a **Project** (region nearest you).
+2. Open **Connection Details** and copy the **Pooled** connection string — the
+   host must contain **`-pooler`**. Serverless opens many short connections;
+   the pooler is what keeps Neon from running out.
+3. Nothing to run: the tables are created automatically on the first request.
 
 ## 2. Make member tokens
 
-One random token per person. Generate them locally:
+One random token per person:
 
 ```bash
 openssl rand -hex 24   # run once per member
 ```
 
-Build a JSON map of `token -> account name`, e.g.:
+Build a JSON map of `token -> account name`:
 
 ```json
 { "3f9a…": "andrea", "b71c…": "wife" }
 ```
 
-Keep these secret — a token is the key to that member's data.
+Treat these like passwords — a token is the key to that member's data.
 
-## 3. Deploy the API (Vercel)
+## 3. Add env vars to the EXISTING Vercel project — ~2 min
 
-The `/api` folder is self-contained (`index.py` exposes the app, `vercel.json`
-routes all requests to it, `requirements.txt` lists deps).
+> If you already created a separate project for `api/`, **delete it** — it is no
+> longer used. Everything lives in the web project now.
 
-1. In Vercel, **Add New → Project** and import this GitHub repo **again** (a
-   second project alongside the web app).
-2. Set **Root Directory** to `api`.
-3. Add **Environment Variables** (Production):
-   | Name | Value |
-   | --- | --- |
-   | `DATABASE_URL` | the Neon **pooled** string from step 1 |
-   | `SYNC_TOKENS` | the JSON token→account map from step 2 |
-   | `CORS_ORIGINS` | your web app origin, e.g. `https://p90xtracker.vercel.app` |
-4. **Deploy.** You'll get a URL like `https://p90x-api.vercel.app`.
-5. Sanity check: open `https://p90x-api.vercel.app/health` → `{"ok":true}`.
+In your existing project (the one serving `p90xtracker.vercel.app`) →
+**Settings → Environment Variables**, add for **Production**:
 
-## 4. Connect the app
+| Name | Value |
+| --- | --- |
+| `DATABASE_URL` | the Neon **pooled** string from step 1 |
+| `SYNC_TOKENS` | the JSON token→account map from step 2 |
 
-On each device, in the web app:
+`CORS_ORIGINS` is not needed (same origin). Then **Deployments → Redeploy** so
+the functions pick up the variables.
 
-1. **Account → Sync server**.
-2. Paste the API URL (`https://p90x-api.vercel.app`) and **that person's token**.
-3. **Connect & back up** — it uploads everything on the device, then that server
-   becomes the active backend (the header shows "Synced …"). Google Sheets is
-   automatically paused while a server is connected.
+Sanity check: open `https://p90xtracker.vercel.app/api/health` → `{"ok":true}`.
 
-Do the same on your wife's device with **her** token → her data lands in her own
-account, fully isolated from yours.
+## 4. Connect the app — ~1 min per device
+
+**Account → Sync server** → paste **just the member token** → **Connect & back
+up**. It uploads everything on the device, then that server becomes the active
+backend (header shows "Synced …") and Google Sheets is paused.
+
+Repeat on your wife's device with **her** token → her own isolated account.
+
+_(The "server URL" field is optional — leave it blank. Fill it only to point at
+a self-hosted server on a different origin.)_
 
 ## 5. Export / analysis
 
-- **In-app:** Account → **Export CSV** downloads a denormalized `p90x-export.csv`
-  (one row per set with its session context) — works offline, any backend.
-- **External:** connect to Neon with `psql "$DATABASE_URL"` (or any client) and
-  query with SQL, or `pg_dump` for a full backup. Add `AND account_id = 'andrea'`
-  to scope to one member.
+- **In-app:** Account → **Export CSV** — one row per set with session context.
+  Works offline, any backend.
+- **External:** `psql "$DATABASE_URL"` for SQL, or `pg_dump` for a full backup.
+  Scope to one member with `WHERE account_id = 'andrea'`.
 
 ---
 
-## Notes & alternatives
+## Notes
 
-- **Cold starts:** a Vercel function that's been idle wakes in ~1s and Neon
-  resumes from auto-suspend in ~0.5s. Sync runs in the background, so this is
-  invisible in normal use.
-- **Portability:** the same app runs unchanged on a long-running host. To move
-  off Vercel later, deploy `/api` to Render (free web service) or Railway with
-  `uvicorn main:app` (see `Procfile`/`Dockerfile`) and point it at the **same**
-  Neon database — no data migration.
-- **Local dev:**
+- **Why one project:** a second project needed its own root directory, its own
+  URL and CORS setup, and Vercel's Python detection expects functions in an
+  `api/` folder *relative to the project root* — which a root-directory-of-`api`
+  project doesn't satisfy, so it produced "No Production Deployment". Colocating
+  as `web/api/` is the conventional layout and removes all of that.
+- **Underscore files:** Vercel turns every `.py` in `api/` into an endpoint,
+  except files starting with `_`. Hence `index.py` (the endpoint) plus
+  `_app.py` / `_schema.py` (libraries).
+- **Routes are mounted twice** — at `/` and at `/api` — so the same code serves
+  a self-hosted origin (`https://myapi/health`) and the Vercel same-origin
+  layout (`https://app/api/health`).
+- **Cold starts:** an idle function wakes in ~1s and Neon resumes in ~0.5s. Sync
+  runs in the background, so this is invisible in normal use.
+- **Self-hosting** (Raspberry Pi / Render / Railway) still works from `web/api/`:
   ```bash
-  cd api
-  pip install -r requirements.txt
-  DATABASE_URL=postgres://… SYNC_TOKENS='{"dev":"me"}' CORS_ORIGINS='*' \
-    uvicorn main:app --reload
+  cd web && pip install -r requirements.txt
+  DATABASE_URL=postgres://… SYNC_TOKENS='{"dev":"me"}' \
+    uvicorn _app:app --app-dir api --host 0.0.0.0 --port 8000
   ```
+  Then paste that origin into the app's optional "server URL" field.

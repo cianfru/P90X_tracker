@@ -50,14 +50,20 @@ at the top.
 ## ⏳ Pending: YOUR actions (away-from-computer to-do)
 
 1. **Deploy the Postgres backend** — runbook: `docs/deploy-vercel-neon.md`.
+   **NOW A SINGLE VERCEL PROJECT** (the earlier two-project setup failed with
+   "No Production Deployment" — Vercel's Python detection expects functions in
+   an `api/` dir relative to the project root, which a root-directory-of-`api`
+   project can't satisfy). The API moved to `web/api/` and deploys as functions
+   on the app's own origin.
+   - **Delete** the separate `p90x` API project if you made one — unused.
    - Neon: create project → copy the **pooled** connection string.
-   - Vercel: new project, Root Directory = `api`, env vars `DATABASE_URL`
-     (Neon pooled), `SYNC_TOKENS` (`{"<tok>":"andrea","<tok>":"wife"}`),
-     `CORS_ORIGINS=https://p90xtracker.vercel.app` → deploy.
-   - In the app: **Account → Sync server** → paste URL + your token →
-     **Connect & back up**.
-   - _You said you might drop Railway; that's fine — Neon holds the data and the
-     API can move to Render/Vercel free later with no migration._
+   - Existing Vercel project → Settings → Env Vars → add `DATABASE_URL` +
+     `SYNC_TOKENS` → Redeploy. (No `CORS_ORIGINS` needed — same origin.)
+   - Check `https://p90xtracker.vercel.app/api/health` → `{"ok":true}`.
+   - In the app: **Account → Sync server** → paste **just your token** →
+     **Connect & back up**. (URL field is optional/blank.)
+   - _Neon holds the data, so compute can move to Render/Railway/Pi later with
+     no migration._
 
 2. **Get devices onto the new build** to receive the aura + map + busy fixes.
    Check the `Build …` stamp at the bottom of **Account** to confirm.

@@ -19,31 +19,49 @@ export interface SyncConfig {
   token: string
 }
 
+/**
+ * The sync API lives at /api on the app's OWN origin (it ships as serverless
+ * functions inside this same deployment), so no URL needs configuring in the
+ * normal case — just a member token. A custom URL is still honoured for a
+ * self-hosted server on another origin.
+ */
+export const defaultSyncUrl = (): string =>
+  typeof location !== 'undefined' ? `${location.origin}/api` : ''
+
 /** Normalize raw URL/token input into a config (without persisting it). */
 export const normalizeConfig = (url: string, token: string): SyncConfig => ({
-  url: url.trim().replace(/\/$/, ''),
+  url: url.trim().replace(/\/$/, '') || defaultSyncUrl(),
   token: token.trim(),
 })
 
 /** Backend config from localStorage (overrides) or Vite env; null = disabled. */
 export function syncConfig(): SyncConfig | null {
   const env = import.meta.env
-  const url = (localStorage.getItem('p90x-sync-url') || env.VITE_SYNC_URL || '')
-    .toString()
-    .replace(/\/$/, '')
+  const url =
+    (localStorage.getItem('p90x-sync-url') || env.VITE_SYNC_URL || '')
+      .toString()
+      .replace(/\/$/, '') || defaultSyncUrl()
   const token = (
     localStorage.getItem('p90x-sync-token') ||
     env.VITE_SYNC_TOKEN ||
     ''
   ).toString()
-  return url && token ? { url, token } : null
+  // The token alone decides whether syncing is on — the URL always resolves.
+  return token ? { url, token } : null
 }
 
 export const syncEnabled = (): boolean => syncConfig() !== null
 
-/** Save / clear the custom server connection (URL + member token). */
+/** Save / clear the server connection (member token, + URL only if custom). */
 export function setSyncConfig(url: string, token: string): void {
-  localStorage.setItem('p90x-sync-url', url.trim().replace(/\/$/, ''))
+  const clean = url.trim().replace(/\/$/, '')
+  // Don't pin the same-origin default: leaving it unset lets the app follow
+  // whatever origin it's served from (custom domain, preview deploy, etc.).
+  if (clean && clean !== defaultSyncUrl()) {
+    localStorage.setItem('p90x-sync-url', clean)
+  } else {
+    localStorage.removeItem('p90x-sync-url')
+  }
   localStorage.setItem('p90x-sync-token', token.trim())
 }
 export function clearSyncConfig(): void {

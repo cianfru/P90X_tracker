@@ -26,9 +26,11 @@ import json
 import os
 
 import asyncpg
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from _schema import SCHEMA_SQL
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
@@ -68,8 +70,7 @@ async def get_pool() -> asyncpg.Pool:
         _pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=4)
     if not _schema_ready:
         async with _pool.acquire() as conn:
-            with open(os.path.join(os.path.dirname(__file__), "schema.sql")) as f:
-                await conn.execute(f.read())
+            await conn.execute(SCHEMA_SQL)
         _schema_ready = True
     return _pool
 
@@ -81,6 +82,8 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+router = APIRouter()
 
 
 def account(authorization: str = Header(default="")) -> str:
@@ -126,12 +129,12 @@ class PushBody(BaseModel):
     sets: list[Set] = []
 
 
-@app.get("/health")
+@router.get("/health")
 async def health():
     return {"ok": True}
 
 
-@app.post("/sync/push")
+@router.post("/sync/push")
 async def push(body: PushBody, acct: str = Depends(account)):
     """Upsert by uuid within the caller's account; each row gets a fresh seq."""
     pool = await get_pool()
@@ -197,7 +200,7 @@ async def push(body: PushBody, acct: str = Depends(account)):
     return {"cursor": cursor}
 
 
-@app.get("/sync/pull")
+@router.get("/sync/pull")
 async def pull(since: int = 0, acct: str = Depends(account)):
     """Return this account's sessions + sets with seq > since, plus a new cursor."""
     pool = await get_pool()
@@ -254,3 +257,11 @@ async def pull(since: int = 0, acct: str = Depends(account)):
             }
         )
     return {"cursor": cursor, "sessions": sessions, "sets": sets}
+
+
+# Serve every route twice: at the root (self-hosted / long-running server, e.g.
+# https://api.example.com/health) AND under /api (deployed as functions on the
+# PWA's own origin, e.g. https://p90xtracker.vercel.app/api/health). Same-origin
+# hosting means no CORS setup and no second URL to configure.
+app.include_router(router)
+app.include_router(router, prefix="/api")

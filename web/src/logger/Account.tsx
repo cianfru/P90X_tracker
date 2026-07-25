@@ -205,7 +205,7 @@ export function Account({
   }
 
   async function connectServer() {
-    if (!srvUrl.trim() || !srvToken.trim()) return
+    if (!srvToken.trim()) return
     setSrvBusy('connect')
     setError(null)
     const cfg = normalizeConfig(srvUrl, srvToken)
@@ -489,18 +489,9 @@ export function Account({
         ) : (
           <>
             <p className="mt-2 text-[13px] text-ink-2">
-              Back up to your own Postgres server instead of Google. Paste the
-              server URL and your member token.
+              Back up to your own database instead of Google. Paste your member
+              token — the server is built into this app.
             </p>
-            <input
-              value={srvUrl}
-              onChange={(e) => setSrvUrl(e.target.value)}
-              placeholder="https://p90x-api.vercel.app"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="mt-3 w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none focus:border-[#34f5a0]/60"
-            />
             <input
               value={srvToken}
               onChange={(e) => setSrvToken(e.target.value)}
@@ -508,11 +499,20 @@ export function Account({
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
+              className="mt-3 w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none focus:border-[#34f5a0]/60"
+            />
+            <input
+              value={srvUrl}
+              onChange={(e) => setSrvUrl(e.target.value)}
+              placeholder="server URL (optional — leave blank)"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               className="mt-2 w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none focus:border-[#34f5a0]/60"
             />
             <button
               onClick={connectServer}
-              disabled={srvBusy !== null || !srvUrl.trim() || !srvToken.trim()}
+              disabled={srvBusy !== null || !srvToken.trim()}
               className="press mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#34f5a0] py-3 text-sm font-bold text-[#06140d] disabled:opacity-40"
             >
               {srvBusy === 'connect' ? (
