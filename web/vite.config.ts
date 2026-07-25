@@ -45,6 +45,14 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Take over immediately on a new deploy. registerType:'autoUpdate' is
+        // supposed to imply these, but the generated worker came out with only
+        // a SKIP_WAITING message listener and NO clientsClaim — so a new worker
+        // activated without ever controlling the already-open page,
+        // 'controllerchange' never fired, the reload in main.tsx never ran, and
+        // an installed PWA served stale assets forever. Set both explicitly.
+        skipWaiting: true,
+        clientsClaim: true,
         // Cache the app shell so the logger opens instantly and works with no signal.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
