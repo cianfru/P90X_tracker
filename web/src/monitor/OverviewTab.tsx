@@ -17,6 +17,7 @@ import type { Analytics } from './analytics'
 import { intensityColor, intensityLabel, type Intensity } from './intensity'
 import { SessionDetail } from './SessionDetail'
 import { C, Card, ChartBox, Kpi, tip } from './ui'
+import { RotationCard } from './RotationCard'
 
 interface Meta {
   formTrend: { label: string; value: number }[]
@@ -126,6 +127,8 @@ export function OverviewTab({
           tone="rose"
         />
       </div>
+
+      <RotationCard sessions={sessions} />
 
       <Card
         title="Consistency"
