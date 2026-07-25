@@ -24,6 +24,9 @@ export interface RotationUnit {
   days: number[]
   /** Candidate options, most → least favourite; each is one or more workouts. */
   options: string[][]
+  /** False for an ANCHOR slot the owner is content to stay on — reported, but
+   *  never flagged stale. A settled preference isn't a rut. */
+  rotate: boolean
 }
 
 export interface SlotStatus extends RotationUnit {
@@ -62,6 +65,7 @@ export function rotationUnits(rotation: Rotation): RotationUnit[] {
       label: 'Push / pull split',
       days: [1, 3],
       options: rotation.pairs.map((p) => [p.push, p.pull]),
+      rotate: true,
     },
   ]
   for (const s of rotation.slots) {
@@ -71,6 +75,7 @@ export function rotationUnits(rotation: Rotation): RotationUnit[] {
       label: s.label,
       days: [s.day],
       options: s.options,
+      rotate: s.rotate !== false,
     })
   }
   return units
@@ -144,9 +149,10 @@ export function computeStaleness(
       sessions: seq.length,
       typical,
       threshold,
-      stale: current.n > threshold,
-      nextIndex:
-        current.i + 1 < unit.options.length
+      stale: unit.rotate && current.n > threshold,
+      nextIndex: !unit.rotate
+        ? null
+        : current.i + 1 < unit.options.length
           ? current.i + 1
           : unit.options.length > 1
             ? 0 // wrapped: back to the favourite

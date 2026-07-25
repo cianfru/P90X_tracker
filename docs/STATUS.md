@@ -70,6 +70,19 @@ Consistent with the owner's "I recover it on Sunday": the week's committed work
 still all lands by Sunday. Committed work (days 1-5) is never dropped, only
 delayed. Encoded as `rotation.onMiss: "slide"`.
 
+### Anchor slots, and the limits of what's logged
+
+Not every slot is meant to rotate. **Day 5 is an anchor**: the owner prefers
+`legs-and-back` over `p90x2-base-back` deliberately and is content to stay on
+it. Anchors are marked `rotate: false` in the rotation data — they still report
+what they're on, but are never flagged stale. A settled preference is not a rut.
+
+⚠️ **The detector can only see what is logged.** Day 5 first appeared as "184x
+in a row, never switched" — but the owner *does* use Base + Back, just doesn't
+record it. Unlogged work is invisible to every analysis in this app, and the
+same blind spot will affect the scheduler: it cannot know a session happened if
+it was never written down. Treat any "never" result as "never recorded".
+
 ### How a slot resolves (confirmed by the owner)
 
 Each slot holds an **ordered preference list, most → least favourite**. You stay

@@ -72,10 +72,18 @@ export function RotationCard({ sessions }: { sessions: Session[] }) {
                     {current}
                   </div>
                   <div className="nums mt-0.5 text-[12px] text-ink-3">
-                    {u.run}× in a row
-                    {u.typical != null
-                      ? ` · you usually switch by ${u.threshold}`
-                      : ' · never switched'}
+                    {u.rotate ? (
+                      <>
+                        {u.run}× in a row
+                        {u.typical != null
+                          ? ` · you usually switch by ${u.threshold}`
+                          : ' · never switched'}
+                      </>
+                    ) : (
+                      // Anchor: the owner prefers this one and means to stay on
+                      // it, so a long run is the point, not a warning.
+                      <>your pick for this slot · {u.run} logged</>
+                    )}
                   </div>
                   {u.stale && next && (
                     <div className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-amber-300">

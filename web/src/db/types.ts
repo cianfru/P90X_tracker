@@ -194,6 +194,13 @@ export interface RotationSlot {
   /** Deliberately half-committed: light by default, but the first slot a
    *  missed workout gets re-assigned into when the week goes badly. */
   flex?: boolean
+  /**
+   * Whether this slot is meant to rotate. `false` marks an ANCHOR: a slot the
+   * owner is happy to keep on its favourite indefinitely (legs & back is
+   * preferred over base + back, deliberately). Anchors still report what
+   * they're on, but are never flagged as stale — a preference isn't a rut.
+   */
+  rotate?: boolean
   /** Rest day — also absorbs a missed workout before the flex slot does. */
   recovery?: boolean
 }
