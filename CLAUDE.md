@@ -32,8 +32,8 @@ progression. **Single-user.** Replaces a 7-year `P90X.xlsx` spreadsheet
 ```
 /web      Vite + React + TS PWA (Dexie, service worker, manifest)  → Vercel
 /web/api  FastAPI sync endpoints, deployed as Vercel Python        → same project
-          functions on the app's own origin under /api. `_`-prefixed
-          files are libraries, `index.py` is the endpoint. DB: Neon.
+          functions on the app's own origin under /api. single-file `index.py`;
+          no sibling imports (serverless bundling). DB: Neon.
 /import   Python xlsx → normalized JSON seed (import_p90x.py, seed.json)
 /assets   Source references: P90X.xlsx, workout-logger.jsx, monitor-dashboard.html
 /docs     build-brief.md, data-model.md, this file lives at repo root

@@ -105,9 +105,15 @@ a self-hosted server on a different origin.)_
   `api/` folder *relative to the project root* — which a root-directory-of-`api`
   project doesn't satisfy, so it produced "No Production Deployment". Colocating
   as `web/api/` is the conventional layout and removes all of that.
-- **Underscore files:** Vercel turns every `.py` in `api/` into an endpoint,
-  except files starting with `_`. Hence `index.py` (the endpoint) plus
-  `_app.py` / `_schema.py` (libraries).
+- **Single file:** the whole API is one `api/index.py` with the schema DDL
+  embedded as a string — no sibling imports and no bundled data files, because
+  serverless builders don't reliably ship those next to the entrypoint. A
+  missing sibling module surfaces as an opaque `FUNCTION_INVOCATION_FAILED`
+  (the module fails to import, so even `/health` 500s), which is exactly the
+  failure this layout removes.
+- **Config never crashes the module:** bad `SYNC_TOKENS` JSON is reported by
+  `/health` as `config_error` rather than raised at import, so a typo degrades
+  to a readable message instead of taking the whole API down.
 - **Routes are mounted twice** — at `/` and at `/api` — so the same code serves
   a self-hosted origin (`https://myapi/health`) and the Vercel same-origin
   layout (`https://app/api/health`).
@@ -117,6 +123,6 @@ a self-hosted server on a different origin.)_
   ```bash
   cd web && pip install -r requirements.txt
   DATABASE_URL=postgres://… SYNC_TOKENS='{"dev":"me"}' \
-    uvicorn _app:app --app-dir api --host 0.0.0.0 --port 8000
+    uvicorn index:app --app-dir api --host 0.0.0.0 --port 8000
   ```
   Then paste that origin into the app's optional "server URL" field.
