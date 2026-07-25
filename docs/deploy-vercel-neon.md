@@ -10,8 +10,8 @@ https://p90xtracker.vercel.app/          →  the PWA
 https://p90xtracker.vercel.app/api/health →  the sync API
 ```
 
-Same origin means **no CORS to configure and no second URL to paste** — the app
-already knows where its server is. You only need a member token.
+Same origin means **no CORS to configure and no URL to paste** — the app already
+knows where its server is, and your Google sign-in is the only credential.
 
 ---
 
@@ -34,67 +34,49 @@ connections.
 
 Nothing to run either way: tables are created automatically on the first request.
 
-## 2. Make member tokens
+## 2. Tell the API which Google app you are
 
-One random token per person:
-
-```bash
-openssl rand -hex 24   # run once per member
-```
-
-Build a JSON map of `token -> account name`:
-
-```json
-{ "3f9a…": "andrea", "b71c…": "wife" }
-```
-
-Treat these like passwords — a token is the key to that member's data.
-
-## 3. Add env vars to the EXISTING Vercel project — ~2 min
-
-> If you already created a separate project for `api/`, **delete it** — it is no
-> longer used. Everything lives in the web project now.
-
-In your existing project (the one serving `p90xtracker.vercel.app`) →
-**Settings → Environment Variables**, add for **Production**:
+Add one environment variable in the same Vercel project
+(**Settings → Environment Variables**, Production):
 
 | Name | Value |
 | --- | --- |
-| `DATABASE_URL` | **skip if you used the Storage integration** — it's already set |
-| `SYNC_TOKENS` | the JSON token→account map from step 2 |
+| `GOOGLE_CLIENT_ID` | the same OAuth Client ID the web app uses |
 
-`CORS_ORIGINS` is not needed (same origin). Then **Deployments → Redeploy** so
-the functions pick up the variables.
+This is what stops an access token issued for *some other* Google app being
+accepted here — the server checks the token's audience against it.
 
-**Sanity check:** open `https://p90xtracker.vercel.app/api/health`. It reports
-whether the config landed, without revealing any values:
+`DATABASE_URL` is already set if you provisioned Neon from the Storage tab.
+`CORS_ORIGINS` is not needed (same origin). There are **no tokens to issue**.
+
+Then **Deployments → Redeploy** so the functions pick up the variables.
+
+**Sanity check:** open `https://p90xtracker.vercel.app/api/health`:
 
 ```json
-{ "ok": true, "db": "configured", "tokens": 2 }
+{ "ok": true, "db": "configured", "auth": "google" }
 ```
 
-- `"db": "missing"` → the database env var didn't reach this deployment.
-- `"tokens": 0` → `SYNC_TOKENS` is missing or isn't valid JSON.
-- **404 / the app's HTML instead of JSON** → the functions didn't deploy; check
-  the build log for the Python build step.
+- `"db": "missing"` → the database variable didn't reach this deployment.
+- `"auth": "google (client id not set)"` → `GOOGLE_CLIENT_ID` is missing.
+- **The app's HTML instead of JSON** → the functions didn't deploy.
 
-## 4. Connect the app — ~1 min per device
+## 3. Sign in — that is the whole setup
 
-**Account → Sync server** → paste **just the member token** → **Connect & back
-up**. It uploads everything on the device, then that server becomes the active
-backend (header shows "Synced …") and Google Sheets is paused.
+**Account → Sign in with Google.** That's the entire setup — there is nothing
+to paste. Signing in uploads whatever the device already has, then keeps it in
+sync in the background (header shows "Synced …").
 
-Repeat on your wife's device with **her** token → her own isolated account.
+Anyone else signs in with *their* Google account and gets a private, isolated
+account automatically. Signed out, the app still works fully; it just keeps
+everything on the device ("Local only").
 
-_(The "server URL" field is optional — leave it blank. Fill it only to point at
-a self-hosted server on a different origin.)_
-
-## 5. Export / analysis
+## 4. Export / analysis
 
 - **In-app:** Account → **Export CSV** — one row per set with session context.
-  Works offline, any backend.
+  Works offline, signed in or out.
 - **External:** `psql "$DATABASE_URL"` for SQL, or `pg_dump` for a full backup.
-  Scope to one member with `WHERE account_id = 'andrea'`.
+  Scope to one person with `WHERE account_id = '<their Google user id>'`.
 
 ---
 
@@ -111,9 +93,10 @@ a self-hosted server on a different origin.)_
   missing sibling module surfaces as an opaque `FUNCTION_INVOCATION_FAILED`
   (the module fails to import, so even `/health` 500s), which is exactly the
   failure this layout removes.
-- **Config never crashes the module:** bad `SYNC_TOKENS` JSON is reported by
-  `/health` as `config_error` rather than raised at import, so a typo degrades
-  to a readable message instead of taking the whole API down.
+- **Identity, not credentials:** the account key is the caller's Google user id,
+  read back from Google for the access token the client already holds (result
+  cached briefly per warm instance). Nothing is issued, stored or pasted, and
+  the same sign-in on a new device reaches the same data.
 - **Routes are mounted twice** — at `/` and at `/api` — so the same code serves
   a self-hosted origin (`https://myapi/health`) and the Vercel same-origin
   layout (`https://app/api/health`).
@@ -122,7 +105,7 @@ a self-hosted server on a different origin.)_
 - **Self-hosting** (Raspberry Pi / Render / Railway) still works from `web/api/`:
   ```bash
   cd web && pip install -r requirements.txt
-  DATABASE_URL=postgres://… SYNC_TOKENS='{"dev":"me"}' \
+  DATABASE_URL=postgres://… GOOGLE_CLIENT_ID=…apps.googleusercontent.com \
     uvicorn index:app --app-dir api --host 0.0.0.0 --port 8000
   ```
-  Then paste that origin into the app's optional "server URL" field.
+  Point the app at it with a `VITE_SYNC_URL` build env var.

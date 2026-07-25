@@ -162,8 +162,13 @@ function requestToken(interactive: boolean): Promise<string> {
   })
 }
 
-/** A valid access token, refreshing silently if the cached one is stale. */
-export async function getAccessToken(): Promise<string> {
+/** A valid access token, refreshing silently if the cached one is stale.
+ *  `force` discards the cached one first (used after the API rejects it). */
+export async function getAccessToken(force = false): Promise<string> {
+  if (force) {
+    accessToken = null
+    tokenExpiry = 0
+  }
   if (accessToken && Date.now() < tokenExpiry - 60_000) return accessToken
   return requestToken(false)
 }

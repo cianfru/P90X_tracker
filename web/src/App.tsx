@@ -22,10 +22,7 @@ import {
   skipHistorySeed,
 } from './db'
 import { useSync } from './sync/useSync'
-import { syncEnabled } from './sync/syncClient'
-import { cachedAccount, googleActive } from './sync/googleAuth'
-import { migrationDone } from './sync/googleSheets'
-import { useGoogleSync } from './sync/useGoogleSync'
+import { cachedAccount } from './sync/googleAuth'
 import { Home } from './logger/Home'
 import { Session } from './logger/Session'
 import { Account } from './logger/Account'
@@ -65,12 +62,8 @@ export default function App() {
       clearTimeout(t2)
     }
   }, [])
-  // A custom sync server (Postgres) takes precedence over Google when connected.
-  const serverActive = syncEnabled()
-  const gActive = googleActive() && !serverActive
-  const syncState = useSync() // active when a custom server is configured
-  // Auto-sync Google only when it's the active backend and first-run is done.
-  const gSync = useGoogleSync(gActive && migrationDone())
+  // Signed in with Google => syncing to the account; signed out => local only.
+  const syncState = useSync()
   const lastSyncAt = useLiveQuery(
     async () => (await db.meta.get('lastSyncAt'))?.value as number | undefined,
   )
@@ -153,7 +146,7 @@ export default function App() {
               <Loader2 size={13} className="animate-spin" />
               {importPct}%
             </span>
-          ) : serverActive ? (
+          ) : syncState.enabled ? (
             <button
               onClick={() => setShowAccount(true)}
               title="Sync status — tap to manage"
@@ -173,33 +166,13 @@ export default function App() {
                   ? fmtAgo(lastSyncAt)
                   : 'Synced'}
             </button>
-          ) : gActive ? (
-            <button
-              onClick={() => setShowAccount(true)}
-              title="Backup status — tap to manage"
-              className={`nums press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${
-                gSync.pending > 0
-                  ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
-                  : 'border-[#34f5a0]/30 bg-[#34f5a0]/10 text-[#34f5a0]'
-              }`}
-            >
-              <Cloud
-                size={13}
-                className={gSync.syncing ? 'animate-pulse' : ''}
-              />
-              {gSync.pending > 0
-                ? `Backing up ${gSync.pending}`
-                : lastSyncAt
-                  ? fmtAgo(lastSyncAt)
-                  : 'Backed up'}
-            </button>
           ) : (
             <button
               onClick={() => setShowAccount(true)}
-              title="Not backing up — tap to connect Google and protect your data"
+              title="Not saved to an account — tap to sign in"
               className="press flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-amber-300"
             >
-              <CloudOff size={13} /> Not backed up
+              <CloudOff size={13} /> Local only
             </button>
           )}
           <button

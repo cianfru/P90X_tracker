@@ -6,10 +6,10 @@ Endpoints (append-only, last-write-wins):
   POST /sync/push        upsert new/soft-deleted sessions + sets (by uuid)
   GET  /sync/pull?since  rows changed after a cursor
 
-Multi-member: each person has their own bearer token; the token maps to an
-`account` and every row is scoped to it, so members never see each other's
-data. Configure with SYNC_TOKENS='{"tok":"name",...}' (or SYNC_TOKEN for a
-single user, account "default").
+Identity is Google: the client sends the Google access token it already holds,
+the server asks Google whose it is, and that person's Google user id becomes the
+account key. Every row is scoped to it, so accounts never see each other's
+data. Nothing to issue, paste or configure — signing in IS the setup.
 
 Everything lives in this one module — schema DDL included — with NO sibling
 imports and no bundled data files, because serverless builders don't reliably
@@ -79,10 +79,14 @@ CREATE INDEX IF NOT EXISTS sets_session_idx ON sets (session_id);
 """
 
 
+import asyncio
 import datetime
 import json
 import os
+import time
+import urllib.error
 import urllib.parse
+import urllib.request
 
 import asyncpg
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
@@ -146,32 +150,40 @@ DATABASE_URL = _database_url()
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
 
 
-def _load_tokens() -> tuple[dict[str, str], str]:
-    """token -> account map, from SYNC_TOKENS (JSON) and/or SYNC_TOKEN (single).
+# ---- identity: you are your Google account -------------------------------
+# No tokens to issue, paste or store. The client sends the Google access token
+# it already holds; we ask Google who it belongs to and use that person's stable
+# Google user id as the account key. Signing in on any device therefore reaches
+# the same data, and a new person signing in gets a fresh, isolated account with
+# no setup at all.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+_TOKENINFO = "https://oauth2.googleapis.com/tokeninfo?access_token="
 
-    Never raises: this runs at import, and throwing here would take down every
-    route — including /health — with an opaque platform-level crash. A bad
-    value yields no tokens plus a message /health can report instead.
+# Verified tokens, cached per warm instance so a burst of sync calls doesn't
+# re-ask Google each time. Value: (google_sub, expiry_epoch_seconds).
+_token_cache: dict[str, tuple[str, float]] = {}
+_TOKEN_CACHE_MAX = 512
+
+
+def _verify_google_token(token: str) -> str:
+    """Return the Google user id for an access token, or '' if it isn't valid.
+
+    Blocking on purpose — called via asyncio.to_thread so it doesn't stall the
+    event loop. Checks `aud` against our own client id: without that, an access
+    token minted for any other Google app would be accepted here.
     """
-    tokens: dict[str, str] = {}
-    problem = ""
-    raw = os.environ.get("SYNC_TOKENS", "").strip()
-    if raw:
-        try:
-            parsed = json.loads(raw)
-            if not isinstance(parsed, dict):
-                problem = "SYNC_TOKENS must be a JSON object of token -> name"
-            else:
-                tokens.update({str(k): str(v) for k, v in parsed.items()})
-        except ValueError as e:
-            problem = f"SYNC_TOKENS is not valid JSON: {e}"
-    single = os.environ.get("SYNC_TOKEN", "").strip()
-    if single:
-        tokens.setdefault(single, "default")
-    return tokens, problem
-
-
-TOKENS, TOKENS_PROBLEM = _load_tokens()
+    with urllib.request.urlopen(_TOKENINFO + urllib.parse.quote(token), timeout=10) as r:
+        info = json.loads(r.read().decode())
+    aud = info.get("aud") or info.get("azp") or ""
+    if GOOGLE_CLIENT_ID and aud != GOOGLE_CLIENT_ID:
+        return ""
+    sub = str(info.get("sub") or "")
+    if not sub:
+        return ""
+    _token_cache[token] = (sub, time.time() + min(float(info.get("expires_in", 300)), 300))
+    if len(_token_cache) > _TOKEN_CACHE_MAX:
+        _token_cache.clear()
+    return sub
 
 # ---- lazy, warm-reused connection pool (serverless-safe) -------------------
 # A module global survives across warm invocations of the same function
@@ -210,13 +222,25 @@ app.add_middleware(
 router = APIRouter()
 
 
-def account(authorization: str = Header(default="")) -> str:
-    """Resolve the bearer token to its account, or 401. This is the tenant key."""
+async def account(authorization: str = Header(default="")) -> str:
+    """The caller's Google user id — the tenant key. 401 if not signed in."""
     token = authorization.removeprefix("Bearer ").strip()
-    acct = TOKENS.get(token) if token else None
-    if not acct:
-        raise HTTPException(status_code=401, detail="bad token")
-    return acct
+    if not token:
+        raise HTTPException(status_code=401, detail="sign in with Google")
+    hit = _token_cache.get(token)
+    if hit and hit[1] > time.time():
+        return hit[0]
+    try:
+        sub = await asyncio.to_thread(_verify_google_token, token)
+    except urllib.error.HTTPError:
+        sub = ""  # Google rejected it: expired or not a real token
+    except Exception as e:  # network/DNS trouble reaching Google
+        raise HTTPException(
+            status_code=503, detail=f"could not reach Google to verify sign-in: {e}"
+        ) from e
+    if not sub:
+        raise HTTPException(status_code=401, detail="sign-in expired or invalid")
+    return sub
 
 
 # ---- payload models (snake_case wire format mirrors the SQL columns) ----
@@ -258,14 +282,11 @@ async def health():
     """Liveness + a config self-check, so hitting this URL in a browser after a
     deploy tells you whether the env vars actually landed. Reports only
     presence, never the values."""
-    out = {
+    return {
         "ok": True,
         "db": "configured" if DATABASE_URL else "missing",
-        "tokens": len(TOKENS),
+        "auth": "google" if GOOGLE_CLIENT_ID else "google (client id not set)",
     }
-    if TOKENS_PROBLEM:
-        out["config_error"] = TOKENS_PROBLEM
-    return out
 
 
 _SESSION_UPSERT = """

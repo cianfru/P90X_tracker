@@ -7,9 +7,7 @@ import {
   LogOut,
   Minus,
   Plus,
-  Plug,
   RefreshCw,
-  Server,
   ShieldCheck,
 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -19,15 +17,7 @@ import { AURA_DEFAULT, setAura } from './programColor'
 import { useSwipeBack } from '../lib/gestures'
 import { fmtAgo } from '../lib/id'
 import { exportCsv } from '../lib/csv'
-import {
-  clearSyncConfig,
-  fullPushServer,
-  normalizeConfig,
-  setSyncConfig,
-  sync as runServerSync,
-  syncEnabled,
-  syncServerHost,
-} from '../sync/syncClient'
+import { fullPushServer, sync as runSync } from '../sync/syncClient'
 import {
   cachedAccount,
   googleClientId,
@@ -37,22 +27,17 @@ import {
   signOut,
   type GoogleAccount,
 } from '../sync/googleAuth'
-import {
-  ensureSpreadsheet,
-  markMigrationDone,
-  migrationDone,
-  pushAll,
-  syncGoogle,
-} from '../sync/googleSheets'
 import { Label } from './ui'
 
 /*
- * Account screen — Google sign-in + Sheets backup. Daily use never needs this;
- * it only sets up who you are and where your data is backed up. Each Google
- * account keeps its own spreadsheet in its own Drive, so accounts stay separate.
+ * Account screen. The app is fully usable without ever coming here — everything
+ * is logged locally first. This is only about MEMORY: sign in with Google and
+ * your workouts persist to your own account, reachable from any device you sign
+ * in on. Your Google identity IS the account; there is nothing to configure,
+ * paste or remember. Sign out and the app keeps working, just locally.
  */
 
-type Busy = null | 'signin' | 'migrate' | 'sync'
+type Busy = null | 'signin' | 'backup' | 'sync'
 
 export function Account({
   onBack,
@@ -66,19 +51,11 @@ export function Account({
   const [busy, setBusy] = useState<Busy>(null)
   const [pct, setPct] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [choose, setChoose] = useState<{ id: string; count: number } | null>(null)
+  const [csvMsg, setCsvMsg] = useState<string | null>(null)
   const [bw, setBw] = useState(getBodyweight())
   const lastSyncAt = useLiveQuery(
     async () => (await db.meta.get('lastSyncAt'))?.value as number | undefined,
   )
-  // Custom sync server (Postgres) — the alternative to Google Sheets.
-  const [srvUrl, setSrvUrl] = useState('')
-  const [srvToken, setSrvToken] = useState('')
-  const [srvBusy, setSrvBusy] = useState<null | 'connect' | 'sync'>(null)
-  const [srvPct, setSrvPct] = useState<number | null>(null)
-  const [csvMsg, setCsvMsg] = useState<string | null>(null)
-  const serverHost = syncServerHost()
-  const serverOn = syncEnabled()
   useEffect(() => setAura(AURA_DEFAULT), [])
   useSwipeBack(onBack)
 
@@ -90,6 +67,9 @@ export function Account({
     setBodyweight(v)
   }
 
+  /* Signing in is the whole setup: authenticate, upload whatever this device
+     already has (idempotent — the server upserts by uuid), then pull anything
+     logged elsewhere. From then on syncing happens in the background. */
   async function handleSignIn() {
     setError(null)
     setBusy('signin')
@@ -97,79 +77,19 @@ export function Account({
       const acct = await signIn()
       setAccount(acct)
       onChange()
-      const { id, empty } = await ensureSpreadsheet()
-      if (empty && migrationDone()) {
-        // RECONNECT: this account already finished its first-run migration but
-        // the sheet is empty — the backup target was recreated (e.g. a scope
-        // change made the old one unreachable). Re-upload everything without
-        // asking: the choose-dialog's "Start clean" would wipe local data,
-        // which is never what a reconnect means.
-        setBusy('migrate')
-        await pushAll(id, (done, total) =>
-          setPct(Math.round((done / total) * 100)),
-        )
-        setPct(null)
-        onChange()
-      } else if (empty) {
-        // Sheet has no data yet (new, or an interrupted first sync): let the
-        // user upload existing data or start clean (a second person shouldn't
-        // inherit the seeded history).
-        const count = await db.sessions.count()
-        setChoose({ id, count })
-      } else {
-        // Existing sheet: full reconcile (restore everything by UUID), then
-        // enable auto-sync.
-        setBusy('sync')
-        await syncGoogle({ full: true })
-        markMigrationDone()
-        onChange()
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function uploadExisting() {
-    if (!choose) return
-    setBusy('migrate')
-    setError(null)
-    try {
-      await pushAll(choose.id, (done, total) =>
-        setPct(Math.round((done / total) * 100)),
+      setBusy('backup')
+      await fullPushServer((done, total) =>
+        setPct(total ? Math.round((done / total) * 100) : 100),
       )
-      setChoose(null)
-      onChange() // migration done → auto-sync can start
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(null)
       setPct(null)
-    }
-  }
-
-  async function startClean() {
-    setBusy('migrate')
-    setError(null)
-    try {
-      await db.transaction('rw', db.sessions, db.sets, db.outbox, db.meta, async () => {
-        await db.sessions.clear()
-        await db.sets.clear()
-        await db.outbox.clear()
-        await db.meta.put({ key: 'gsheet-rows-sessions', value: 1 })
-        await db.meta.put({ key: 'gsheet-rows-sets', value: 1 })
-      })
-      // Don't re-seed the bundled (owner's) history onto this account.
-      localStorage.setItem('p90x-history-seeded', '1')
-      localStorage.setItem('p90x-history-meta-seeded-v2', '1')
-      markMigrationDone()
-      setChoose(null)
+      setBusy('sync')
+      await runSync()
       onChange()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(null)
+      setPct(null)
     }
   }
 
@@ -182,19 +102,18 @@ export function Account({
   async function handleSyncNow() {
     setBusy('sync')
     setError(null)
-    // Full reconcile so a manual "Sync now" always pulls the whole sheet
-    // (e.g. after another device did a full backup).
-    const r = await syncGoogle({ full: true })
+    const r = await runSync()
     if (!r.ok && r.reason) setError(r.reason)
     setBusy(null)
   }
 
   async function handleForceBackup() {
-    setBusy('migrate')
+    setBusy('backup')
     setError(null)
     try {
-      const { id } = await ensureSpreadsheet()
-      await pushAll(id, (done, total) => setPct(Math.round((done / total) * 100)))
+      await fullPushServer((done, total) =>
+        setPct(total ? Math.round((done / total) * 100) : 100),
+      )
       onChange()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -202,47 +121,6 @@ export function Account({
       setBusy(null)
       setPct(null)
     }
-  }
-
-  async function connectServer() {
-    if (!srvToken.trim()) return
-    setSrvBusy('connect')
-    setError(null)
-    const cfg = normalizeConfig(srvUrl, srvToken)
-    try {
-      // Push everything on this device up FIRST (idempotent by uuid), using an
-      // explicit config. We only persist the connection — which flips the app's
-      // active backend to this server — AFTER the initial backup succeeds, so a
-      // failed/interrupted connect never leaves the backend half-enabled.
-      await fullPushServer(cfg, (done, total) =>
-        setSrvPct(total ? Math.round((done / total) * 100) : 100),
-      )
-      setSyncConfig(cfg.url, cfg.token)
-      // Then pull once to catch anything another device already sent.
-      await runServerSync()
-      setSrvUrl('')
-      setSrvToken('')
-      onChange()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setSrvBusy(null)
-      setSrvPct(null)
-    }
-  }
-
-  async function serverSyncNow() {
-    setSrvBusy('sync')
-    setError(null)
-    const r = await runServerSync()
-    if (!r.ok && r.reason) setError(r.reason)
-    setSrvBusy(null)
-  }
-
-  function disconnectServer() {
-    clearSyncConfig()
-    // Keep local data; just stop syncing to the server.
-    onChange()
   }
 
   async function handleExportCsv() {
@@ -265,10 +143,11 @@ export function Account({
         <ChevronLeft size={18} /> Back
       </button>
 
-      <h2 className="display mb-1 text-2xl">Account &amp; backup</h2>
+      <h2 className="display mb-1 text-2xl">Account</h2>
       <p className="mb-6 text-[13px] text-ink-3">
-        Sign in with Google to back up to your own private spreadsheet — and
-        restore it on any device. Everything keeps working offline.
+        The app works fully without signing in — everything is saved on this
+        device. Sign in with Google to keep your history in your own account and
+        pick it up on any device.
       </p>
 
       {/* Profile — bodyweight feeds the effort colour coding (vest math). */}
@@ -300,13 +179,14 @@ export function Account({
         </span>
       </div>
 
-      {/* Step 1 — Client ID (one-time app setup) */}
+      {/* One-time app setup: the public OAuth Client ID. Baked in by default, so
+          this only appears if it was cleared or needs overriding. */}
       {!configured && (
         <div className="card mb-4 p-4">
           <Label>One-time setup</Label>
           <p className="mt-2 text-[13px] text-ink-2">
-            Paste the Google OAuth <b>Client ID</b> you created (see the setup
-            steps). It's a public app identifier, not a secret.
+            Paste the Google OAuth <b>Client ID</b>. It's a public app
+            identifier, not a secret.
           </p>
           <input
             value={clientId}
@@ -327,55 +207,31 @@ export function Account({
         </div>
       )}
 
-      {/* Step 2 — sign in / account */}
       {configured && !account && (
-        <button
-          onClick={handleSignIn}
-          disabled={busy === 'signin'}
-          className="press flex w-full items-center justify-center gap-2.5 rounded-2xl bg-white py-3.5 text-[15px] font-bold text-zinc-900 disabled:opacity-60"
-        >
-          {busy === 'signin' ? (
-            <RefreshCw size={18} className="animate-spin" />
-          ) : (
-            <GoogleGlyph />
-          )}
-          Sign in with Google
-        </button>
-      )}
-
-      {/* First-run choice: upload existing data or start clean */}
-      {choose && (
-        <div className="card mt-4 p-4">
-          <p className="text-sm font-semibold">Set up this account</p>
-          <p className="mt-1 text-[13px] text-ink-3">
-            This account's spreadsheet is empty. Upload the data on this device
-            ({choose.count.toLocaleString()} sessions) to it, or start clean?
+        <>
+          <button
+            onClick={handleSignIn}
+            disabled={busy !== null}
+            className="press flex w-full items-center justify-center gap-2.5 rounded-2xl bg-white py-3.5 text-[15px] font-bold text-zinc-900 disabled:opacity-60"
+          >
+            {busy ? (
+              <RefreshCw size={18} className="animate-spin" />
+            ) : (
+              <GoogleGlyph />
+            )}
+            {busy === 'backup'
+              ? `Saving your history… ${pct ?? 0}%`
+              : busy
+                ? 'Signing in…'
+                : 'Sign in with Google'}
+          </button>
+          <p className="mt-2 text-center text-[12px] text-ink-3">
+            Your workouts stay on this device until you do.
           </p>
-          {pct !== null && (
-            <p className="mt-2 text-[13px] font-semibold text-[#34f5a0]">
-              Uploading… {pct}%
-            </p>
-          )}
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={uploadExisting}
-              disabled={busy === 'migrate'}
-              className="press flex-1 rounded-xl bg-[#34f5a0] py-2.5 text-sm font-bold text-[#06140d] disabled:opacity-40"
-            >
-              Upload my data
-            </button>
-            <button
-              onClick={startClean}
-              disabled={busy === 'migrate'}
-              className="press flex-1 rounded-xl border border-hair bg-white/[0.04] py-2.5 text-sm font-semibold text-ink-2 disabled:opacity-40"
-            >
-              Start clean
-            </button>
-          </div>
-        </div>
+        </>
       )}
 
-      {account && !choose && (
+      {account && (
         <div className="card p-4">
           <div className="flex items-center gap-3">
             {account.picture ? (
@@ -400,7 +256,7 @@ export function Account({
           <div className="mt-4 flex gap-2">
             <button
               onClick={handleSyncNow}
-              disabled={busy === 'sync'}
+              disabled={busy !== null}
               className="press flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/[0.06] py-2.5 text-sm font-semibold text-ink disabled:opacity-50"
             >
               <RefreshCw
@@ -411,25 +267,26 @@ export function Account({
             </button>
             <button
               onClick={handleSignOut}
-              className="press flex items-center justify-center gap-2 rounded-xl border border-hair bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-ink-2"
+              disabled={busy !== null}
+              className="press flex items-center justify-center gap-2 rounded-xl border border-hair bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-ink-2 disabled:opacity-50"
             >
               <LogOut size={16} /> Sign out
             </button>
           </div>
           <button
             onClick={handleForceBackup}
-            disabled={busy === 'migrate'}
+            disabled={busy !== null}
             className="press mt-2 w-full rounded-xl bg-[#34f5a0]/15 py-2.5 text-sm font-semibold text-[#34f5a0] disabled:opacity-50"
           >
-            {busy === 'migrate'
-              ? `Backing up… ${pct ?? 0}%`
-              : 'Back up all my data now'}
+            {busy === 'backup'
+              ? `Saving… ${pct ?? 0}%`
+              : 'Save everything on this device'}
           </button>
           <p className="mt-1.5 flex items-center justify-between text-[12px] text-ink-3">
-            <span>Uploads everything on this device to your Sheet.</span>
+            <span>Re-uploads this device's full history.</span>
             {lastSyncAt && (
               <span className="shrink-0 font-semibold text-[#34f5a0]">
-                Last backed up {fmtAgo(lastSyncAt)}
+                Synced {fmtAgo(lastSyncAt)}
               </span>
             )}
           </p>
@@ -443,94 +300,7 @@ export function Account({
         </div>
       )}
 
-      {/* Sync server (Postgres) — the alternative to Google Sheets. When
-          connected it takes over as the active backend. */}
-      <div className="card mt-4 p-4">
-        <div className="flex items-center gap-2">
-          <Server size={16} className="text-ink-2" />
-          <Label>Sync server</Label>
-        </div>
-        {serverOn ? (
-          <>
-            <p className="mt-2 flex items-center gap-1.5 text-[13px] text-ink-2">
-              <span className="h-2 w-2 rounded-full bg-[#34f5a0]" />
-              Connected to <b className="text-ink">{serverHost}</b>
-            </p>
-            <p className="mt-1 text-[12px] text-ink-3">
-              This is your active backup. Google Sheets is paused while a server
-              is connected.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={serverSyncNow}
-                disabled={srvBusy !== null}
-                className="press flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/[0.06] py-2.5 text-sm font-semibold text-ink disabled:opacity-50"
-              >
-                <RefreshCw
-                  size={16}
-                  className={srvBusy === 'sync' ? 'animate-spin' : ''}
-                />
-                Sync now
-              </button>
-              <button
-                onClick={disconnectServer}
-                disabled={srvBusy !== null}
-                className="press flex items-center justify-center gap-2 rounded-xl border border-hair bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-ink-2 disabled:opacity-50"
-              >
-                <LogOut size={16} /> Disconnect
-              </button>
-            </div>
-            {lastSyncAt && (
-              <p className="mt-2 text-right text-[12px] font-semibold text-[#34f5a0]">
-                Last synced {fmtAgo(lastSyncAt)}
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="mt-2 text-[13px] text-ink-2">
-              Back up to your own database instead of Google. Paste your member
-              token — the server is built into this app.
-            </p>
-            <input
-              value={srvToken}
-              onChange={(e) => setSrvToken(e.target.value)}
-              placeholder="member token"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="mt-3 w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none focus:border-[#34f5a0]/60"
-            />
-            <input
-              value={srvUrl}
-              onChange={(e) => setSrvUrl(e.target.value)}
-              placeholder="server URL (optional — leave blank)"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="mt-2 w-full rounded-xl border border-hair bg-black/25 px-3.5 py-3 text-sm outline-none focus:border-[#34f5a0]/60"
-            />
-            <button
-              onClick={connectServer}
-              disabled={srvBusy !== null || !srvToken.trim()}
-              className="press mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#34f5a0] py-3 text-sm font-bold text-[#06140d] disabled:opacity-40"
-            >
-              {srvBusy === 'connect' ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" />
-                  {srvPct !== null ? `Uploading ${srvPct}%` : 'Connecting…'}
-                </>
-              ) : (
-                <>
-                  <Plug size={16} /> Connect &amp; back up
-                </>
-              )}
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Export — works with any backend (reads local data). */}
+      {/* Export — works signed in or out (reads local data). */}
       <button
         onClick={handleExportCsv}
         className="press card mt-4 flex w-full items-center gap-3 p-4 text-left"
@@ -549,8 +319,8 @@ export function Account({
       <div className="mt-6 flex items-start gap-2 text-[12px] text-ink-3">
         <Cloud size={14} className="mt-0.5 shrink-0" />
         <span>
-          Your data lives in a spreadsheet in <b>your</b> Google Drive. Signing
-          out just forgets it on this device — your Sheet stays safe.
+          Signing out only forgets the account on this device — your saved
+          history stays in your account and comes back when you sign in again.
         </span>
       </div>
 

@@ -1,5 +1,6 @@
 import { db } from '../db'
 import type { Modifier, Session, Supplement, WorkoutSet } from '../db'
+import { getAccessToken, googleActive } from './googleAuth'
 
 /*
  * Sync client — the other half of /api. Local-first: this never blocks the UI.
@@ -14,69 +15,44 @@ import type { Modifier, Session, Supplement, WorkoutSet } from '../db'
  * is idempotent).
  */
 
-export interface SyncConfig {
-  url: string
-  token: string
+/**
+ * The sync API lives at /api on the app's OWN origin (it ships as serverless
+ * functions in this same deployment), so there is nothing to configure. A
+ * custom URL is only honoured for a self-hosted server on another origin.
+ */
+export const syncUrl = (): string => {
+  const custom = (import.meta.env.VITE_SYNC_URL || '').toString().replace(/\/$/, '')
+  if (custom) return custom
+  return typeof location !== 'undefined' ? `${location.origin}/api` : ''
 }
 
 /**
- * The sync API lives at /api on the app's OWN origin (it ships as serverless
- * functions inside this same deployment), so no URL needs configuring in the
- * normal case — just a member token. A custom URL is still honoured for a
- * self-hosted server on another origin.
+ * Syncing is on whenever someone is signed in with Google — no separate
+ * connect step, no token to paste. The server identifies the account from the
+ * Google sign-in itself, so signing in on any device reaches the same data.
+ * Signed out, the app is still fully usable; it just keeps everything local.
  */
-export const defaultSyncUrl = (): string =>
-  typeof location !== 'undefined' ? `${location.origin}/api` : ''
+export const syncEnabled = (): boolean => googleActive()
 
-/** Normalize raw URL/token input into a config (without persisting it). */
-export const normalizeConfig = (url: string, token: string): SyncConfig => ({
-  url: url.trim().replace(/\/$/, '') || defaultSyncUrl(),
-  token: token.trim(),
-})
 
-/** Backend config from localStorage (overrides) or Vite env; null = disabled. */
-export function syncConfig(): SyncConfig | null {
-  const env = import.meta.env
-  const url =
-    (localStorage.getItem('p90x-sync-url') || env.VITE_SYNC_URL || '')
-      .toString()
-      .replace(/\/$/, '') || defaultSyncUrl()
-  const token = (
-    localStorage.getItem('p90x-sync-token') ||
-    env.VITE_SYNC_TOKEN ||
-    ''
-  ).toString()
-  // The token alone decides whether syncing is on — the URL always resolves.
-  return token ? { url, token } : null
-}
-
-export const syncEnabled = (): boolean => syncConfig() !== null
-
-/** Save / clear the server connection (member token, + URL only if custom). */
-export function setSyncConfig(url: string, token: string): void {
-  const clean = url.trim().replace(/\/$/, '')
-  // Don't pin the same-origin default: leaving it unset lets the app follow
-  // whatever origin it's served from (custom domain, preview deploy, etc.).
-  if (clean && clean !== defaultSyncUrl()) {
-    localStorage.setItem('p90x-sync-url', clean)
-  } else {
-    localStorage.removeItem('p90x-sync-url')
-  }
-  localStorage.setItem('p90x-sync-token', token.trim())
-}
-export function clearSyncConfig(): void {
-  localStorage.removeItem('p90x-sync-url')
-  localStorage.removeItem('p90x-sync-token')
-}
-/** Host of the configured server (for a compact "Connected to …" line). */
-export function syncServerHost(): string | null {
-  const c = syncConfig()
-  if (!c) return null
-  try {
-    return new URL(c.url).host
-  } catch {
-    return c.url
-  }
+/**
+ * Every API call carries the signed-in Google account. If the access token has
+ * expired the server answers 401; we refresh silently and retry once, so a long
+ * session never surfaces an auth error the user has to act on.
+ */
+async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const send = async (token: string) =>
+    fetch(`${syncUrl()}${path}`, {
+      ...init,
+      headers: {
+        ...(init?.body ? { 'content-type': 'application/json' } : {}),
+        ...(init?.headers ?? {}),
+        authorization: `Bearer ${token}`,
+      },
+    })
+  let res = await send(await getAccessToken())
+  if (res.status === 401) res = await send(await getAccessToken(true))
+  return res
 }
 
 async function getCursor(): Promise<number> {
@@ -171,7 +147,7 @@ const wireToSet = (w: WireSet): WorkoutSet => ({
   deleted: !!w.deleted,
 })
 
-async function push(cfg: SyncConfig): Promise<void> {
+async function push(): Promise<void> {
   const entries = await db.outbox.toArray()
   if (!entries.length) return
   const sessionIds = entries
@@ -185,12 +161,8 @@ async function push(cfg: SyncConfig): Promise<void> {
     .filter((s): s is WorkoutSet => Boolean(s))
     .map(setToWire)
 
-  const res = await fetch(`${cfg.url}/sync/push`, {
+  const res = await apiFetch('/sync/push', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${cfg.token}`,
-    },
     body: JSON.stringify({ sessions, sets }),
   })
   if (!res.ok) throw new Error(`push failed: ${res.status}`)
@@ -198,11 +170,9 @@ async function push(cfg: SyncConfig): Promise<void> {
   await db.outbox.bulkDelete(entries.map((e) => e.key))
 }
 
-async function pull(cfg: SyncConfig): Promise<{ sessions: number; sets: number }> {
+async function pull(): Promise<{ sessions: number; sets: number }> {
   const since = await getCursor()
-  const res = await fetch(`${cfg.url}/sync/pull?since=${since}`, {
-    headers: { authorization: `Bearer ${cfg.token}` },
-  })
+  const res = await apiFetch(`/sync/pull?since=${since}`)
   if (!res.ok) throw new Error(`pull failed: ${res.status}`)
   const data = (await res.json()) as {
     cursor?: number
@@ -224,7 +194,6 @@ async function pull(cfg: SyncConfig): Promise<{ sessions: number; sets: number }
  * after a dropped connection is safe.
  */
 export async function fullPushServer(
-  cfg: SyncConfig,
   onProgress?: (done: number, total: number) => void,
 ): Promise<void> {
   const sessions = (await db.sessions.toArray()).map(sessionToWire)
@@ -238,12 +207,8 @@ export async function fullPushServer(
     sessions?: WireSession[]
     sets?: WireSet[]
   }): Promise<void> => {
-    const res = await fetch(`${cfg.url}/sync/push`, {
+    const res = await apiFetch('/sync/push', {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${cfg.token}`,
-      },
       body: JSON.stringify({ sessions: [], sets: [], ...body }),
     })
     if (!res.ok) throw new Error(`push failed: ${res.status}`)
@@ -283,15 +248,14 @@ const STALE_MS = 90_000
 
 /** Push local changes then pull remote ones. Safe no-op if unconfigured/offline. */
 export async function sync(): Promise<SyncResult> {
-  const cfg = syncConfig()
-  if (!cfg) return { ok: false, reason: 'not-configured' }
+  if (!syncEnabled()) return { ok: false, reason: 'signed-out' }
   if (runningSince && Date.now() - runningSince < STALE_MS) {
     return { ok: false, reason: 'busy' }
   }
   runningSince = Date.now()
   try {
-    await push(cfg)
-    const pulled = await pull(cfg)
+    await push()
+    const pulled = await pull()
     await db.meta.put({ key: 'lastSyncAt', value: Date.now() })
     return { ok: true, pulled }
   } catch (e) {
