@@ -268,69 +268,94 @@ async def health():
     return out
 
 
+_SESSION_UPSERT = """
+    INSERT INTO sessions (id, account_id, date, workout_id, device_id,
+                          created_at, location, lat, lon, form, notes,
+                          supplements, deleted, seq)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+            $12::jsonb, $13, nextval('sync_seq'))
+    ON CONFLICT (id) DO UPDATE SET
+      date = EXCLUDED.date,
+      workout_id = EXCLUDED.workout_id,
+      device_id = EXCLUDED.device_id,
+      created_at = EXCLUDED.created_at,
+      location = EXCLUDED.location,
+      lat = EXCLUDED.lat,
+      lon = EXCLUDED.lon,
+      form = EXCLUDED.form,
+      notes = EXCLUDED.notes,
+      supplements = EXCLUDED.supplements,
+      deleted = EXCLUDED.deleted,
+      seq = nextval('sync_seq')
+    WHERE sessions.account_id = EXCLUDED.account_id
+"""
+
+_SET_UPSERT = """
+    INSERT INTO sets (id, account_id, session_id, exercise_id, reps,
+                      weight_kg, round, modifiers, struggle, logged_at,
+                      deleted, seq)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11, nextval('sync_seq'))
+    ON CONFLICT (id) DO UPDATE SET
+      reps = EXCLUDED.reps,
+      weight_kg = EXCLUDED.weight_kg,
+      round = EXCLUDED.round,
+      modifiers = EXCLUDED.modifiers,
+      struggle = EXCLUDED.struggle,
+      logged_at = EXCLUDED.logged_at,
+      deleted = EXCLUDED.deleted,
+      seq = nextval('sync_seq')
+    WHERE sets.account_id = EXCLUDED.account_id
+"""
+
+# Index-friendly: two bounded MAX lookups instead of scanning every row of the
+# account through a UNION.
+_CURSOR_SQL = """
+    SELECT GREATEST(
+      (SELECT COALESCE(MAX(seq), 0) FROM sessions WHERE account_id = $1),
+      (SELECT COALESCE(MAX(seq), 0) FROM sets     WHERE account_id = $1)
+    )
+"""
+
+
 @router.post("/sync/push")
 async def push(body: PushBody, acct: str = Depends(account)):
-    """Upsert by uuid within the caller's account; each row gets a fresh seq."""
+    """Upsert by uuid within the caller's account; each row gets a fresh seq.
+
+    Rows are written with executemany, which pipelines the whole batch over one
+    round-trip cycle. Executing them one at a time in a loop meant a network
+    round-trip PER ROW to the database — fine for an incremental sync of a few
+    sets, but the initial migration of ~18k rows blew the function time limit
+    and returned 504.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            for s in body.sessions:
-                await conn.execute(
-                    """
-                    INSERT INTO sessions (id, account_id, date, workout_id, device_id,
-                                          created_at, location, lat, lon, form, notes,
-                                          supplements, deleted, seq)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-                            $12::jsonb, $13, nextval('sync_seq'))
-                    ON CONFLICT (id) DO UPDATE SET
-                      date = EXCLUDED.date,
-                      workout_id = EXCLUDED.workout_id,
-                      device_id = EXCLUDED.device_id,
-                      created_at = EXCLUDED.created_at,
-                      location = EXCLUDED.location,
-                      lat = EXCLUDED.lat,
-                      lon = EXCLUDED.lon,
-                      form = EXCLUDED.form,
-                      notes = EXCLUDED.notes,
-                      supplements = EXCLUDED.supplements,
-                      deleted = EXCLUDED.deleted,
-                      seq = nextval('sync_seq')
-                    WHERE sessions.account_id = EXCLUDED.account_id
-                    """,
-                    s.id, acct, datetime.date.fromisoformat(s.date),
-                    s.workout_id, s.device_id, s.created_at,
-                    s.location, s.lat, s.lon, s.form, s.notes,
-                    json.dumps(s.supplements), s.deleted,
+            if body.sessions:
+                await conn.executemany(
+                    _SESSION_UPSERT,
+                    [
+                        (
+                            s.id, acct, datetime.date.fromisoformat(s.date),
+                            s.workout_id, s.device_id, s.created_at,
+                            s.location, s.lat, s.lon, s.form, s.notes,
+                            json.dumps(s.supplements), s.deleted,
+                        )
+                        for s in body.sessions
+                    ],
                 )
-            for st in body.sets:
-                await conn.execute(
-                    """
-                    INSERT INTO sets (id, account_id, session_id, exercise_id, reps,
-                                      weight_kg, round, modifiers, struggle, logged_at,
-                                      deleted, seq)
-                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11, nextval('sync_seq'))
-                    ON CONFLICT (id) DO UPDATE SET
-                      reps = EXCLUDED.reps,
-                      weight_kg = EXCLUDED.weight_kg,
-                      round = EXCLUDED.round,
-                      modifiers = EXCLUDED.modifiers,
-                      struggle = EXCLUDED.struggle,
-                      logged_at = EXCLUDED.logged_at,
-                      deleted = EXCLUDED.deleted,
-                      seq = nextval('sync_seq')
-                    WHERE sets.account_id = EXCLUDED.account_id
-                    """,
-                    st.id, acct, st.session_id, st.exercise_id, st.reps, st.weight_kg,
-                    st.round, json.dumps(st.modifiers), st.struggle, st.logged_at,
-                    st.deleted,
+            if body.sets:
+                await conn.executemany(
+                    _SET_UPSERT,
+                    [
+                        (
+                            st.id, acct, st.session_id, st.exercise_id, st.reps,
+                            st.weight_kg, st.round, json.dumps(st.modifiers),
+                            st.struggle, st.logged_at, st.deleted,
+                        )
+                        for st in body.sets
+                    ],
                 )
-            cursor = await conn.fetchval(
-                "SELECT COALESCE(MAX(seq), 0) FROM ("
-                "  SELECT seq FROM sessions WHERE account_id = $1"
-                "  UNION ALL SELECT seq FROM sets WHERE account_id = $1"
-                ") q",
-                acct,
-            )
+            cursor = await conn.fetchval(_CURSOR_SQL, acct)
     return {"cursor": cursor}
 
 
