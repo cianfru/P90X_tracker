@@ -335,7 +335,8 @@ function PickWorkout({
 }) {
   const groups = useMemo(() => {
     const m = new Map<string, WorkoutTemplate[]>()
-    for (const t of [...templates].sort((a, b) => a.name.localeCompare(b.name))) {
+    const pickable = templates.filter((t) => !t.untracked)
+    for (const t of [...pickable].sort((a, b) => a.name.localeCompare(b.name))) {
       const key = (t.program as Program | undefined) ?? 'Other'
       m.set(key, [...(m.get(key) ?? []), t])
     }

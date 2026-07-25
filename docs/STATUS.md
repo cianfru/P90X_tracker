@@ -19,8 +19,8 @@ interchangeable workouts, not a fixed title.
 | 3 | Pull | determined by day 1 — see the pair table below |
 | 4 | Total body / complex | X2 Total Body, **or** an X3 upper+lower PAIR — see below |
 | 5 | Legs / base | `legs-and-back` · `p90x2-base-back` |
-| 6 | Complex **or** eccentric (pick one) **+ X3 abs** | as day 4, plus **P90X3 abs** |
-| 7 | Recovery | — |
+| 6 | **Flex** — light/fun by default, absorbs a missed workout when needed | Kenpo X · a short X3 + X3 abs · or a re-assigned missed workout |
+| 7 | Recovery — or make-up for a missed day | — |
 
 ### Day 1 and Day 3 are a MATCHED PAIR, not independent slots
 
@@ -49,6 +49,24 @@ Day 6 is one X3 workout (complex or eccentric) **+** X3 abs.
 
 → The model must support a slot resolving to a LIST of workouts, and a session
    that contains two routines.
+
+### Day 6 is a FLEX slot — deliberate slack in the week
+
+Day 6 is "inherently a 50% workout": by default something light/fun (Kenpo X in
+the stock structure, or a short X3 + abs). It is intentionally half-committed so
+it can be REPURPOSED when the week goes badly. The week is really **5 committed
+slots (1-5) + 2 absorbers (6, 7)**:
+
+| Days missed | Day 6 | Day 7 |
+| --- | --- | --- |
+| 0 | light / fun | rest |
+| 1 | light / fun | make-up |
+| 2 | **make-up (harder)** | make-up |
+
+→ Required behaviour: **skipping a workout on the calendar must re-assign it**,
+   filling day 7 first, then day 6. The schedule adapts; the owner does not
+   re-plan by hand. Day 6's difficulty is therefore an OUTPUT of how the week
+   went, not a fixed property.
 
 ### How a slot resolves (confirmed by the owner)
 

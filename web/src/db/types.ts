@@ -156,6 +156,56 @@ export interface WorkoutTemplate {
   targets?: Record<string, { reps?: number; weightKg?: number }>
   /** Body Beast set-by-set structure — drives the worksheet grid logger. */
   plan?: BeastGroup[]
+  /**
+   * Cardio / plyo / stretch routines that are PERFORMED but never rep-logged
+   * (Plyometrics, Plyocide, Kenpo X, X3 abs, Yoga …). They exist so the
+   * schedule can name what to do on a given day, but they carry no exercises,
+   * so they're kept out of the workout picker and out of rep-based analytics.
+   */
+  untracked?: boolean
+}
+
+/*
+ * The training rotation: a rolling 7-day cycle of training STIMULI, each
+ * satisfied by any of several interchangeable workouts. Days are relative
+ * ("day 1..7"), never weekdays, so the cycle can start on any date and slide
+ * around work — which is the whole point.
+ */
+
+/** A day 1 / day 3 pairing. Choosing the push workout fixes its complementary
+ *  pull workout, following the P90X split (chest&back ↔ shoulders&arms). */
+export interface RotationPair {
+  push: string
+  pull: string
+}
+
+export interface RotationSlot {
+  /** Position in the cycle, 1–7. */
+  day: number
+  label: string
+  /** Day 1/3 take their workout from the chosen pair instead of `options`. */
+  fromPair?: 'push' | 'pull'
+  /**
+   * Candidate workouts, ordered MOST → least favourite. Each candidate is a
+   * list because short routines get doubled up to fill one slot (two P90X3
+   * sessions ≈ one full-length workout).
+   */
+  options?: string[][]
+  /** Deliberately half-committed: light by default, but the first slot a
+   *  missed workout gets re-assigned into when the week goes badly. */
+  flex?: boolean
+  /** Rest day — also absorbs a missed workout before the flex slot does. */
+  recovery?: boolean
+}
+
+export interface Rotation {
+  name: string
+  pairs: RotationPair[]
+  slots: RotationSlot[]
+  /** Days that absorb missed workouts, in priority order (e.g. [7, 6]). */
+  makeUpOrder: number[]
+  /** Every few months the whole cycle is replaced for a block. */
+  blockBreak?: { program: Program; weeks: [number, number] }
 }
 
 export interface Session {

@@ -81,7 +81,11 @@ export function Home({
 
   // ---- Step 2: workouts within the chosen program ----
   if (program) {
-    const workouts = (templates ?? []).filter((t) => t.program === program.id)
+    // Untracked routines (cardio/plyo/stretch) are schedule-only: they have no
+    // exercises to log, so they don't belong in the start-a-workout list.
+    const workouts = (templates ?? []).filter(
+      (t) => t.program === program.id && !t.untracked,
+    )
     return (
       <div className="pt-3">
         <button
@@ -154,7 +158,7 @@ export function Home({
 
   // ---- Step 1: choose a program (+ resume / recent shortcuts) ----
   const countFor = (p: Program) =>
-    (templates ?? []).filter((t) => t.program === p).length
+    (templates ?? []).filter((t) => t.program === p && !t.untracked).length
 
   return (
     <div className="pt-3">

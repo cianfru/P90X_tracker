@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Exercise, WorkoutTemplate } from './types'
+import type { Exercise, Rotation, WorkoutTemplate } from './types'
 import catalogJson from './catalog.json'
 
 /*
@@ -13,6 +13,10 @@ import catalogJson from './catalog.json'
 interface Catalog {
   exercises: Exercise[]
   templates: WorkoutTemplate[]
+  /** The owner's training rotation — which stimulus on which day of the cycle,
+   *  and the preferred workouts for each. Data, not code, so the rotation can
+   *  be edited without touching the scheduler. */
+  rotation?: Rotation
 }
 
 export const CATALOG = catalogJson as unknown as Catalog
