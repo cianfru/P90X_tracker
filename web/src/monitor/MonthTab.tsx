@@ -34,6 +34,9 @@ interface DaySession {
   score: number
   startedAt: number
   hasTime: boolean
+  /** False for a one-tap session with no sets (cardio/plyo/stretch): it
+   *  happened, but there's no load to score, so don't imply an intensity. */
+  tracked: boolean
 }
 
 export function MonthTab({
@@ -64,6 +67,13 @@ export function MonthTab({
     return m
   }, [sets])
 
+  // Which sessions actually recorded sets — the rest are one-tap "did it".
+  const hasSets = useMemo(() => {
+    const ids = new Set<string>()
+    for (const s of sets) if (!s.deleted) ids.add(s.sessionId)
+    return ids
+  }, [sets])
+
   // Sessions grouped by calendar day (YYYY-MM-DD).
   const byDay = useMemo(() => {
     const m = new Map<string, DaySession[]>()
@@ -75,11 +85,12 @@ export function MonthTab({
         score: intensity.get(s.id)?.score ?? 50,
         startedAt: s.createdAt,
         hasTime: s.deviceId !== 'import',
+        tracked: hasSets.has(s.id),
       })
       m.set(s.date, arr)
     }
     return m
-  }, [live, intensity, nameFor])
+  }, [live, intensity, nameFor, hasSets])
 
   // Default to the month of the most recent session.
   const latest = useMemo(
@@ -149,8 +160,12 @@ export function MonthTab({
   const dayDot = (day: number) => {
     const list = byDay.get(iso(y, m, day))
     if (!list?.length) return null
-    // Colour by the day's highest-intensity session.
-    const top = Math.max(...list.map((s) => s.score))
+    // Colour by the day's highest-intensity session — but only counting ones
+    // that recorded load. A day of pure cardio/stretch gets a neutral dot
+    // rather than borrowing a score it never earned.
+    const scored = list.filter((s) => s.tracked)
+    if (!scored.length) return { color: 'rgba(255,255,255,0.35)', count: list.length }
+    const top = Math.max(...scored.map((s) => s.score))
     return { color: intensityColor(top), count: list.length }
   }
 
@@ -265,7 +280,9 @@ export function MonthTab({
           )}
           <div className="space-y-2">
             {selList.map((s) => {
-              const color = intensityColor(s.score)
+              const color = s.tracked
+                ? intensityColor(s.score)
+                : 'rgba(255,255,255,0.35)'
               return (
                 <button
                   key={s.id}
@@ -289,9 +306,9 @@ export function MonthTab({
                   <span
                     className="nums text-sm font-bold"
                     style={{ color }}
-                    title={intensityLabel(s.score)}
+                    title={s.tracked ? intensityLabel(s.score) : 'logged, no sets'}
                   >
-                    {s.score}
+                    {s.tracked ? s.score : '–'}
                   </span>
                   <ChevronRight size={16} className="shrink-0 text-ink-3" />
                 </button>
@@ -306,10 +323,12 @@ export function MonthTab({
           date={adding}
           templates={templates}
           onClose={() => setAdding(null)}
-          onPick={async (workoutId) => {
+          onPick={async (workoutId, untracked) => {
             const id = await startOrResumeSession(workoutId, adding)
             setAdding(null)
-            onStart(id)
+            // Nothing to log for cardio/plyo/stretch — recording it is the
+            // whole action, so don't drop into an empty logger.
+            if (!untracked) onStart(id)
           }}
         />
       )}
@@ -331,12 +350,11 @@ function PickWorkout({
   date: string
   templates: WorkoutTemplate[]
   onClose: () => void
-  onPick: (workoutId: string) => void
+  onPick: (workoutId: string, untracked: boolean) => void
 }) {
   const groups = useMemo(() => {
     const m = new Map<string, WorkoutTemplate[]>()
-    const pickable = templates.filter((t) => !t.untracked)
-    for (const t of [...pickable].sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const t of [...templates].sort((a, b) => a.name.localeCompare(b.name))) {
       const key = (t.program as Program | undefined) ?? 'Other'
       m.set(key, [...(m.get(key) ?? []), t])
     }
@@ -379,14 +397,14 @@ function PickWorkout({
                 {list.map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => onPick(t.id)}
+                    onClick={() => onPick(t.id, !!t.untracked)}
                     className="press flex w-full items-center justify-between gap-3 rounded-xl border border-hair bg-white/[0.03] px-4 py-3 text-left"
                   >
                     <span className="truncate text-sm font-semibold capitalize">
                       {t.name}
                     </span>
                     <span className="nums shrink-0 text-[12px] text-ink-3">
-                      {t.exerciseIds.length} moves
+                      {t.untracked ? 'tap to log' : `${t.exerciseIds.length} moves`}
                     </span>
                   </button>
                 ))}

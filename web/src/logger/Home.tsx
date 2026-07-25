@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Dumbbell, Plus } from 'lucide-react'
 import { db } from '../db'
 import type { Program } from '../db'
 import { startOrResumeSession } from '../db/repo'
@@ -79,13 +79,21 @@ export function Home({
     onOpen(await startOrResumeSession(workoutId))
   }
 
+  // One tap = the session exists, with no sets. Enough for the rotation to know
+  // the day happened; nothing to type. Idempotent — tapping twice won't
+  // duplicate, since startOrResumeSession resumes the same day's session.
+  const doneToday = new Set((todaySessions ?? []).map((s) => s.workoutId))
+  async function markDone(workoutId: string) {
+    await startOrResumeSession(workoutId)
+  }
+
   // ---- Step 2: workouts within the chosen program ----
   if (program) {
-    // Untracked routines (cardio/plyo/stretch) are schedule-only: they have no
-    // exercises to log, so they don't belong in the start-a-workout list.
-    const workouts = (templates ?? []).filter(
-      (t) => t.program === program.id && !t.untracked,
-    )
+    const inProgram = (templates ?? []).filter((t) => t.program === program.id)
+    // Rep-based routines open the logger; cardio/plyo/stretch have nothing to
+    // count, so they get a one-tap "did it" instead — see below.
+    const workouts = inProgram.filter((t) => !t.untracked)
+    const quickLog = inProgram.filter((t) => t.untracked)
     return (
       <div className="pt-3">
         <button
@@ -152,6 +160,58 @@ export function Home({
             </button>
           ))}
         </div>
+
+        {/* Nothing to count in these, but the cycle still needs to know they
+            happened — one tap records the session with no sets. */}
+        {quickLog.length > 0 && (
+          <div className="mt-7">
+            <Label>Tap to log</Label>
+            <p className="mt-1 mb-2.5 text-[12px] text-ink-3">
+              No reps to track — tapping just records that you did it.
+            </p>
+            <div className="space-y-2">
+              {quickLog.map((t) => {
+                const done = doneToday.has(t.id)
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => markDone(t.id)}
+                    className={`press flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left ${
+                      done
+                        ? 'border-[#34f5a0]/40 bg-[#34f5a0]/10'
+                        : 'border-hair bg-white/[0.03]'
+                    }`}
+                  >
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                      style={
+                        done
+                          ? { background: '#34f5a0', color: '#06140d' }
+                          : { background: 'rgba(255,255,255,0.06)' }
+                      }
+                    >
+                      {done ? (
+                        <Check size={16} strokeWidth={3} />
+                      ) : (
+                        <Plus size={16} strokeWidth={2.6} className="text-ink-3" />
+                      )}
+                    </span>
+                    <span
+                      className={`flex-1 truncate text-sm font-semibold ${done ? 'text-[#8ff0c6]' : 'text-ink'}`}
+                    >
+                      {t.name}
+                    </span>
+                    {done && (
+                      <span className="shrink-0 text-[12px] font-semibold text-[#34f5a0]">
+                        done today
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
