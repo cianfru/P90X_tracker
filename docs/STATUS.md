@@ -22,6 +22,33 @@ interchangeable workouts, not a fixed title.
 | 6 | Complex **or** eccentric (pick one) **+ X3 abs** | as day 4, plus **P90X3 abs** |
 | 7 | Recovery | — |
 
+### How a slot resolves (confirmed by the owner)
+
+Each slot holds an **ordered preference list, most → least favourite**. You stay
+on the current option until it feels STALE ("if I feel I ran chest and back too
+long"), then advance to the next. It is not rotation and not random. Day 1's
+full order, given verbatim:
+
+`chest-and-back` → `chest-shoulders-tris` → `x2-chest-back` → `x2-chest-sh-tris`
+
+→ The app can DETECT staleness (consecutive sessions / weeks on one option) and
+   suggest advancing, rather than requiring the owner to track it.
+
+### Disruption rule (confirmed)
+
+A long work day means the day is **SKIPPED, not slid** — and **made up on
+Sunday** to keep the week consistent. So:
+- the weekly slot order is preserved; the cycle does NOT shift;
+- **Sunday (day 7) is the make-up slot**: recovery if nothing was missed,
+  otherwise it absorbs the missed workout.
+
+### No recovery week (confirmed)
+
+The owner does NOT take the guide's 3:1 deload week — "that was many years ago,
+now I just go". Weekly recovery is day 7 only. Build to this; do not reintroduce
+deload weeks. (An optional, data-driven fatigue signal — rising struggle rate or
+falling performance — would be additive, not a schedule rule.)
+
 - **Abs are thrown in randomly**, not fixed to a slot.
 - **Every few months: a Body Beast block of 4–6 weeks** replaces the cycle
   entirely, to change the stimulus.
