@@ -5,6 +5,58 @@ _Working branch: `claude/eloquent-pasteur-o7drkn` (also fast-forwarded to `main`
 This is a running "where we are" note so work can resume cleanly. Newest context
 at the top.
 
+## 🏋️ THE OWNER'S ACTUAL ROTATION (foundational — do not re-derive)
+
+15 years on the program; knows the workouts by heart and swaps deliberately for
+adaptability. P90X is the foundation, but the rotation is a **hybrid across all
+four programs**. It is SLOT-BASED: each day is a training stimulus with several
+interchangeable workouts, not a fixed title.
+
+| Day | Stimulus | Interchangeable options |
+| --- | --- | --- |
+| 1 | Push / chest | `chest-and-back` · `chest-shoulders-tris` |
+| 2 | Plyo / legs | **Plyometrics** · **Plyocide** · `bb-bulk-legs` |
+| 3 | Pull / back+bis | `back-and-bis` · `v-sculpt` |
+| 4 | Total body / complex | `p90x2-x2-total-body` · `p90x3-complex-upper` · `p90x3-complex-lower` · `p90x3-eccentric-upper` · `p90x3-eccentric-lower` |
+| 5 | Legs / base | `legs-and-back` · `p90x2-base-back` |
+| 6 | Complex **or** eccentric (pick one) **+ X3 abs** | as day 4, plus **P90X3 abs** |
+| 7 | Recovery | — |
+
+- **Abs are thrown in randomly**, not fixed to a slot.
+- **Every few months: a Body Beast block of 4–6 weeks** replaces the cycle
+  entirely, to change the stimulus.
+- **Flying schedule disrupts plans** — adaptability is a hard requirement, not a
+  nice-to-have. The cycle must slide, not break.
+
+⚠️ **Not in `catalog.json`:** Plyometrics, Plyocide, P90X3 abs (also Yoga X,
+Kenpo X, X Stretch, Cardio X). The catalog was built from the spreadsheet, which
+only recorded rep-based resistance work. A scheduler must reference workouts
+that are never logged, so these need catalog entries (possibly flagged as
+non-logging / schedule-only).
+
+### What the P90X Fitness Guide actually specifies (read 2026-07-25)
+
+- 90 days = 3 training blocks; each block = **3 weeks hard + 1 week recovery**
+  (Adaptive → Mastery → Recovery). The 3:1 ratio is the load-bearing rule.
+- **"Day 1–7" are relative days, not weekdays** — a rolling 7-day cycle. This is
+  what makes scheduling around a roster tractable.
+- Recovery weeks are structurally different (Yoga / Core Syn / Kenpo / X Stretch),
+  not just lighter.
+- **Phase 3 alternates weekly** between the Phase-1 and Phase-2 layouts.
+- Doubles adds AM Cardio X 3x/wk (phase 2) then 4x/wk (phase 3). Lean swaps
+  resistance for cardio/core.
+- The guide itself sanctions backing off when overtrained, and flags a rising
+  resting heart rate as the signal.
+
+## 📌 Wanted next (owner's requests)
+
+- **Better map quality — evaluate Mapbox** in place of the current CARTO raster
+  tiles in `web/src/monitor/TravelMap.tsx` (needs a Mapbox token; vector tiles,
+  nicer styling, retina).
+- **Schedule generator** (phase 2): upload a work roster → generate a monthly
+  schedule from the rotation above, designed so exhaustion/flight changes slide
+  the cycle rather than break it.
+
 ## ✅ WORKING: sign in with Google, data persists to your account
 
 The architecture, finally settled:
