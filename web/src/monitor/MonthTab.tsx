@@ -295,8 +295,8 @@ export function MonthTab({
             <p className="mt-2.5 text-[12.5px] leading-snug text-ink-2">
               {!week.behind ? (
                 <>
-                  Week already on budget — anything more is ahead of your usual{' '}
-                  {week.typicalSessions}-session week.
+                  Week on budget — a good {week.typicalSessions}-session week for
+                  you. Anything more is a bonus.
                 </>
               ) : week.outOfReach ? (
                 <>

@@ -7,9 +7,9 @@ import { sync, syncEnabled } from './syncClient'
  * Drives background sync without ever blocking the UI: runs on mount, when the
  * device comes online, on a 30s heartbeat, and shortly after new rows land in
  * the outbox. Overlapping runs are guarded inside sync(). Exposes the pending
- * count + a syncing flag for a lightweight header indicator. Active whenever a
- * custom sync server is configured — the server backend TAKES PRECEDENCE over
- * Google Sheets (which App gates off while a server is connected).
+ * count + a syncing flag for a lightweight header indicator. Active whenever
+ * you're signed in with Google — that identity is the account key the backend
+ * scopes every row to.
  */
 export function useSync(): { enabled: boolean; pending: number; syncing: boolean } {
   const enabled = syncEnabled()

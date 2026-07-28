@@ -1,20 +1,24 @@
 /*
- * Google sign-in via Google Identity Services (GIS), token model — no backend.
- * We request a short-lived access token for the Drive/Sheets scope plus basic
- * profile, so each person's data lives in their own Drive and accounts are
- * naturally separate. Tokens are refreshed silently while the app is open;
- * daily logging never needs any of this (it's local-first) — auth only gates
- * backup/restore. The app works fully without a Client ID configured.
+ * Google sign-in via Google Identity Services (GIS), token model.
+ *
+ * IDENTITY ONLY. Signing in tells the backend which account you are — nothing
+ * more. Your data lives in Dexie on the device and in Postgres keyed by your
+ * Google user id; the app never reads or writes anything in your Google
+ * account. Tokens refresh silently while the app is open, and daily logging
+ * never needs any of this: it's local-first, and auth only gates sync.
  */
 
-// drive.file (find/create/read/write ONLY the files this app makes) + identity.
-// The Sheets API accepts a drive.file token for app-created spreadsheets, so we
-// don't need the broad, "sensitive" spreadsheets scope — which is what made
-// Google show the "unverified app" warning. drive.file is non-sensitive, so the
-// warning goes away with no verification needed, and the app can't touch any of
-// your other Drive files.
-const SCOPE =
-  'https://www.googleapis.com/auth/drive.file openid email profile'
+// `openid email profile` and nothing else.
+//
+// This used to also request `drive.file`, from when sync wrote a spreadsheet to
+// your Drive. That backend is long gone, but the scope stayed behind — so every
+// sign-in still asked permission to touch Drive files, for a capability the app
+// no longer has. Asking for access you don't use is how consent screens get
+// noisy and how people learn to click through them.
+//
+// These three are the "non-sensitive" identity scopes: no Google consent screen
+// beyond picking an account, no verification needed, and nothing to grant.
+const SCOPE = 'openid email profile'
 
 const CLIENT_ID_KEY = 'p90x-google-client-id'
 const ACCOUNT_KEY = 'p90x-google-account'
@@ -154,9 +158,13 @@ function requestToken(interactive: boolean): Promise<string> {
           tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000
           resolve(resp.access_token)
         }
-        // Interactive sign-in forces the full consent screen so every scope
-        // (incl. Sheets/Drive) is granted; refreshes stay silent.
-        client.requestAccessToken({ prompt: interactive ? 'consent' : 'none' })
+        // `prompt: 'consent'` FORCES Google's consent screen on every single
+        // interactive sign-in — that was the pop-up appearing each time. It
+        // existed to guarantee the Drive scope got granted; with identity-only
+        // scopes there is nothing to consent to, so an empty prompt is right:
+        // Google shows the account chooser when it needs one and stays quiet
+        // otherwise. Refreshes remain silent via 'none'.
+        client.requestAccessToken({ prompt: interactive ? '' : 'none' })
       })
       .catch(reject)
   })

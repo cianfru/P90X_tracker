@@ -158,11 +158,15 @@ falls out of the model rather than being a rule bolted on:
 
 - The week is budgeted in **intensity points** (a session's 0–100 score), not in
   sessions. Three easy days and two brutal ones aren't the same week.
-- The target is **learned**: median weekly points over the trailing **52 weeks**,
-  Monday-start, empty weeks included. Measured alternatives: all-history 96 (too
-  low — averages in the 2019 baseline), 104w 140, 52w 141, 26w 151, 13w 143. The
-  52w window tracks real growth (56 → 148 simulated across the history) without
-  the wobble of the short ones.
+- The target is **learned**: the **75th percentile** of weekly points over the
+  trailing **52 weeks**, Monday-start, empty weeks included. The median was the
+  first choice and it was WRONG — a median is beaten in half of all weeks by
+  construction, and because a session's score is itself a percentile rank (median
+  session = 50 by definition) two decent sessions cleared it. The owner hit
+  146/143 in two days and said so. Measured on his trailing year: p50 143 pts
+  (2 sessions, beaten 26/52 weeks) · p65 167 · **p75 190 (3 sessions, beaten
+  13/52)** · p90 232. p75 is "a good week for you", not "an average week".
+  `TARGET_PCT` in `weekLoad.ts` is the one number to move.
 - The shortfall is divided by **expected remaining sessions**, never by free
   calendar days. Dividing by days inverts the whole idea — on a Monday it asks a
   2-sessions-a-week trainee for six 24-point days. Extra days are recruited only

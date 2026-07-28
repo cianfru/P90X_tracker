@@ -13,24 +13,28 @@ import { addDays, weekStart, type PlannedDay } from './plan'
  * redistributed onto the days that are left, which is exactly the behaviour
  * being asked for.
  *
- * The target is LEARNED, never prescribed. Measured over the logged history in
- * Monday-start weeks (empty weeks included — they're part of the real rhythm):
+ * The target is LEARNED, never prescribed — from the trailing YEAR of
+ * Monday-start weeks (empty weeks included; they're part of the real rhythm).
+ * A year is the stable window: simulated across the whole history it tracks the
+ * owner actually getting stronger without the week-to-week wobble of a 13- or
+ * 26-week window, and the all-history figure is far too low because it averages
+ * in the 2019 baseline.
  *
- *   all 390 weeks     median 96 pts/week   (median 2 sessions)
- *   trailing 104w     median 140
- *   trailing 52w      median 141
- *   trailing 26w      median 151
- *   trailing 13w      median 143
+ * It is the 75th PERCENTILE of those weeks, not the median. The median was the
+ * obvious first choice and it was wrong: a median is beaten in half of all
+ * weeks by construction, and since a session's score is itself a percentile
+ * rank (so the median session is 50 by definition), two decent sessions cleared
+ * it outright. Measured on the owner's trailing year:
  *
- * The all-history figure is far too low — it averages in the 2019 baseline and
- * would call a mediocre week a good one. The short windows track the current
- * level but swing on a single holiday. A trailing YEAR is the stable choice:
- * simulated across the whole history its target moves 56 → 148 as the owner
- * actually got stronger, without the week-to-week wobble of the 13/26w windows.
+ *   p50   143 pts   2 sessions   beaten in 26 of 52 weeks
+ *   p65   167 pts   3 sessions   beaten in 19
+ *   p75   190 pts   3 sessions   beaten in 13
+ *   p90   232 pts   3 sessions   beaten in 10
  *
- * At 141 points across a typical 2-session week, a normal week asks ~70 per
- * session — comfortably above the median session, which is the point: the
- * budget is a floor to clear, not an average to regress to.
+ * p75 is "a good week for you" rather than "an average week" — roughly three
+ * sessions, or two brutal ones — which is what a budget should be. It stays
+ * self-correcting: train less for a while and the top quartile of recent weeks
+ * falls too, so it can't ratchet.
  *
  * THE DEBT DIES ON MONDAY. A missed week must never make the next one harder,
  * or a bad fortnight compounds into a demand nobody could meet. Two independent
@@ -40,9 +44,13 @@ import { addDays, weekStart, type PlannedDay } from './plan'
  *      week, and `target` is a fixed weekly figure. There is nowhere for a
  *      deficit to accumulate — the shortfall is recomputed from scratch every
  *      Monday, never carried.
- *   2. The target is a median of RECENT weeks, so training less pulls it DOWN,
- *      not up. Simulated over a three-month lay-off it decays 141 → 115 and the
- *      ask with it (71 → 58). The only stable direction is gentler.
+ *   2. The target is a percentile of RECENT weeks, so it can never be pushed
+ *      up by a bad patch. Note this is a WEAKER brake than the median gave:
+ *      empty weeks land at the bottom of the distribution, so p75 barely moves
+ *      over a three-month lay-off (190 → 189) where the median decayed to 115.
+ *      It only starts falling once more than a quarter of the year is empty.
+ *      That's the intended trade — the bar shouldn't sag the moment you miss a
+ *      fortnight — and guarantee 1 is the load-bearing one regardless.
  *
  * Verified across every Monday of 2026: the fresh-week ask stays in a 44–84
  * band with no upward drift, and a Sunday sitting at 11/142 (out of reach)
@@ -51,6 +59,12 @@ import { addDays, weekStart, type PlannedDay } from './plan'
 
 /** Weeks of history the target is learned from. */
 const WINDOW_WEEKS = 52
+/**
+ * Where in that year's spread the bar sits. 0.5 (the median) is beaten half the
+ * time by definition and made the budget trivial; 0.75 asks for a good week.
+ * The one number to move if the weekly bar feels wrong.
+ */
+const TARGET_PCT = 0.75
 /** Below this many weeks of history, use everything there is. */
 const MIN_WEEKS = 8
 /**
@@ -63,11 +77,10 @@ const CEILING = 85
 /** Where the ask stops being routine and starts being a hard session. */
 const HARD = 65
 
-const median = (xs: number[]): number => {
+const percentile = (xs: number[], p: number): number => {
   if (!xs.length) return 0
   const s = [...xs].sort((a, b) => a - b)
-  const m = Math.floor(s.length / 2)
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+  return s[Math.min(s.length - 1, Math.floor(s.length * p))]
 }
 
 export interface WeekLoad {
@@ -144,8 +157,23 @@ export function computeWeekLoad(
   }
   const window =
     history.length >= MIN_WEEKS ? history.slice(-WINDOW_WEEKS) : history
-  const target = Math.round(median(window.map((w) => w.pts)))
-  const typicalSessions = Math.round(median(window.map((w) => w.n)))
+  const target = Math.round(
+    percentile(
+      window.map((w) => w.pts),
+      TARGET_PCT,
+    ),
+  )
+  // Same percentile for the session count: the ask is `target / sessions`, so a
+  // p75 target divided by a median session count would overstate every session.
+  const typicalSessions = Math.max(
+    1,
+    Math.round(
+      percentile(
+        window.map((w) => w.n),
+        TARGET_PCT,
+      ),
+    ),
+  )
 
   const cur = byWeek.get(start) ?? { n: 0, pts: 0 }
   const banked = Math.round(cur.pts)
