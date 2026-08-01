@@ -3,6 +3,7 @@ import { ChevronLeft, MapPin } from 'lucide-react'
 import { db } from '../db'
 import { MODIFIER_META } from '../db'
 import { templateExercises } from '../db/repo'
+import { inPerformedOrder } from '../db'
 import { fmtDate } from '../lib/id'
 import { useSwipeBack } from '../lib/gestures'
 import { intensityColor, intensityLabel } from './intensity'
@@ -36,7 +37,7 @@ export function SessionDetail({
     if (!session) return null
     const template = await db.templates.get(session.workoutId)
     const exercises = template
-      ? await templateExercises(template.exerciseIds)
+      ? inPerformedOrder(template, await templateExercises(template.exerciseIds))
       : []
     const sets = (
       await db.sets.where('sessionId').equals(sessionId).toArray()
@@ -148,14 +149,9 @@ export function SessionDetail({
                       key={s.id}
                       className="nums rounded-lg bg-black/25 px-2.5 py-1.5 text-sm font-semibold"
                     >
-                      <span className="text-ink-3">R{s.round}</span>{' '}
-                      {s.reps}
+                      <span className="text-ink-3">R{s.round}</span> {s.reps}
                       {s.weightKg ? `×${s.weightKg}kg` : ''}
-                      {mods ? (
-                        <span className="text-amber-300"> ·{mods}</span>
-                      ) : (
-                        ''
-                      )}
+                      {mods ? <span className="text-amber-300"> ·{mods}</span> : ''}
                       {s.struggle ? ' 🔥' : ''}
                     </span>
                   )

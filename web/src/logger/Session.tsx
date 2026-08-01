@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Flag, Trash2 } from 'lucide-react'
-import { db } from '../db'
+import { db, walkOf } from '../db'
 import { deleteSession, templateExercises } from '../db/repo'
 import { capturePosition } from './geolocate'
 import { auraFor, programAccent, setAura } from './programColor'
@@ -48,12 +48,10 @@ export function Session({
   const [showRecap, setShowRecap] = useState(false)
   // The full performed order (exercise ids, repeats allowed): an explicit
   // `sequence` for non-uniform workouts, else the list repeated `rounds` times.
-  const walk = useMemo<string[]>(() => {
-    if (!exercises?.length) return []
-    if (template?.sequence?.length) return template.sequence
-    const r = template?.rounds ?? 1
-    return Array.from({ length: r }).flatMap(() => exercises.map((e) => e.id))
-  }, [exercises, template?.sequence, template?.rounds])
+  const walk = useMemo<string[]>(
+    () => (exercises?.length && template ? walkOf(template, exercises) : []),
+    [exercises, template],
+  )
 
   /*
    * One card per PERFORMED SLOT — the walk — not one per exercise.

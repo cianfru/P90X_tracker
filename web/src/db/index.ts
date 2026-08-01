@@ -6,4 +6,5 @@ export {
   seedHistoryMeta,
   skipHistorySeed,
 } from './history'
+export { walkOf, inPerformedOrder } from './order'
 export * from './types'

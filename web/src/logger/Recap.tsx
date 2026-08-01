@@ -4,6 +4,7 @@ import { db } from '../db'
 import type { Exercise, WorkoutSet } from '../db'
 import { MODIFIER_META } from '../db'
 import { templateExercises } from '../db/repo'
+import { inPerformedOrder } from '../db'
 import { effortOf } from './effort'
 import { fmtDate } from '../lib/id'
 
@@ -54,7 +55,12 @@ export function Recap({
     if (!session) return null
     const template = await db.templates.get(session.workoutId)
     if (!template) return null
-    const exercises = await templateExercises(template.exerciseIds)
+    // Rows follow the order the workout is actually performed in, not the
+    // catalog's list — see db/order.ts.
+    const exercises = inPerformedOrder(
+      template,
+      await templateExercises(template.exerciseIds),
+    )
     const all = await db.sessions
       .where('workoutId')
       .equals(session.workoutId)
