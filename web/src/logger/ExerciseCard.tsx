@@ -37,6 +37,8 @@ export function ExerciseCard({
   sessionId,
   accent,
   target,
+  round,
+  rounds,
   isOpen,
   onToggle,
   onLogged,
@@ -46,6 +48,10 @@ export function ExerciseCard({
   accent: string
   /** Mixer pre-fill target (reps/weight) — overrides the history default. */
   target?: { reps?: number; weightKg?: number }
+  /** Which time round this move comes up, and how many times in total. Only
+   *  shown when a move is performed more than once in the routine. */
+  round?: number
+  rounds?: number
   isOpen: boolean
   onToggle: () => void
   onLogged?: (exerciseId: string) => void
@@ -91,7 +97,7 @@ export function ExerciseCard({
     }
   }, [isOpen])
 
-  const round = sets.length + 1
+  const nextSetNo = sets.length + 1
   const label = exercise.displayName ?? exercise.name
   const addedKg = !weighted && vestOn ? vestKg : null
   const currentEffort = effortOf(
@@ -152,6 +158,11 @@ export function ExerciseCard({
       >
         <div className="flex items-center gap-2.5 text-left">
           <span className="font-semibold">{label}</span>
+          {rounds && rounds > 1 && (
+            <span className="nums shrink-0 rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] font-bold text-ink-3">
+              {round}/{rounds}
+            </span>
+          )}
           {sets.length > 0 && (
             <span
               className="nums rounded-full px-2 py-0.5 text-xs font-bold"
@@ -227,7 +238,7 @@ export function ExerciseCard({
 
           <div className="mt-4 flex items-center justify-between gap-3">
             <Stepper
-              label={`reps · R${round}`}
+              label={`reps · R${nextSetNo}`}
               value={reps}
               onChange={changeReps}
               valueColor={toneColor}
@@ -315,8 +326,8 @@ export function ExerciseCard({
                   className="nums flex items-center justify-between rounded-xl bg-black/25 px-3 py-2 text-xs text-ink-2"
                 >
                   <span>
-                    <span className="font-semibold text-ink-3">R{s.round}</span>{' '}
-                    · {s.reps}
+                    <span className="font-semibold text-ink-3">R{s.round}</span> ·{' '}
+                    {s.reps}
                     {s.weightKg ? `×${s.weightKg}kg` : ' reps'}
                     {s.modifiers.length
                       ? ' · ' +

@@ -41,7 +41,9 @@ export function Session({
     [sessionId],
   )
 
-  const [open, setOpen] = useState<string | null>(null)
+  // Which SLOT of the walk is expanded (index), not which exercise —
+  // a move done twice has two cards and only one of them should open.
+  const [open, setOpen] = useState<number | null>(null)
   const [finishing, setFinishing] = useState(false)
   const [showRecap, setShowRecap] = useState(false)
   // The full performed order (exercise ids, repeats allowed): an explicit
@@ -54,32 +56,42 @@ export function Session({
   }, [exercises, template?.sequence, template?.rounds])
 
   /*
-   * Cards follow the PERFORMED order, taken from the walk.
+   * One card per PERFORMED SLOT — the walk — not one per exercise.
    *
-   * `exerciseIds` is the catalog's list and carries no promise of matching
-   * `sequence`. In legs & back it didn't: the two moves never logged in seven
-   * years (single-leg wall squat, three-way lunge) were appended to the end by
-   * the importer, so from move 10 the cards ran a position ahead of the video
-   * and those two sat orphaned below the real last exercise. Deriving the order
-   * from the walk means the sequence is the single source of truth, and no
-   * future template can drift the same way.
+   * The list is the worksheet: legs & back has 23 lines because the chin /
+   * close / switch grips each come round twice, and each of those gets its own
+   * card in its own place. With one card per exercise the second round
+   * re-opened a card twelve rows further UP the page, so logging read as the
+   * app jumping backwards at random. Here "next" is always the card directly
+   * below the one you just finished.
+   *
+   * It also fixes the order outright: the walk comes from `sequence`, whereas
+   * `exerciseIds` carried no promise of matching it — in legs & back the two
+   * moves never logged in seven years had been appended to the end.
    */
-  const cards = useMemo(() => {
-    if (!exercises?.length) return exercises ?? []
-    const firstAt = new Map<string, number>()
-    walk.forEach((id, i) => {
-      if (!firstAt.has(id)) firstAt.set(id, i)
+  const slots = useMemo(() => {
+    const byId = new Map((exercises ?? []).map((e) => [e.id, e]))
+    const seen = new Map<string, number>()
+    return walk.flatMap((id, i) => {
+      const ex = byId.get(id)
+      const round = (seen.get(id) ?? 0) + 1
+      seen.set(id, round)
+      if (!ex) return []
+      return [
+        {
+          key: `${id}-${round}`,
+          slot: i,
+          ex,
+          round,
+          rounds: walk.filter((x) => x === id).length,
+        },
+      ]
     })
-    return [...exercises].sort(
-      (a, b) =>
-        (firstAt.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
-        (firstAt.get(b.id) ?? Number.MAX_SAFE_INTEGER),
-    )
   }, [exercises, walk])
   const [pos, setPos] = useState(0)
   useEffect(() => setPos(0), [sessionId])
   useEffect(() => {
-    if (open === null && walk.length && !showRecap && !finishing) setOpen(walk[0])
+    if (open === null && walk.length && !showRecap && !finishing) setOpen(0)
   }, [walk, open, showRecap, finishing])
 
   // Round of the exercise currently at `pos` (nth time it appears in the walk).
@@ -124,15 +136,12 @@ export function Session({
     0,
   )
 
-  function handleLogged(exerciseId: string) {
+  function handleLogged(slot: number) {
     if (!walk.length) return
-    // Advance from this exercise's slot in the walk to the next slot.
-    let from = walk.indexOf(exerciseId, pos)
-    if (from === -1) from = pos
-    const nextPos = from + 1
+    const nextPos = slot + 1
     if (nextPos < walk.length) {
       setPos(nextPos)
-      setOpen(walk[nextPos])
+      setOpen(nextPos)
     } else {
       setOpen(null)
       setFinishing(true)
@@ -232,20 +241,22 @@ export function Session({
           <BeastGrid
             sessionId={sessionId}
             template={template}
-            exById={new Map(cards.map((e) => [e.id, e]))}
+            exById={new Map((exercises ?? []).map((e) => [e.id, e]))}
             accent={accent}
           />
         ) : (
-          cards.map((ex) => (
+          slots.map((s) => (
             <ExerciseCard
-              key={ex.id}
-              exercise={ex}
+              key={s.key}
+              exercise={s.ex}
               sessionId={sessionId}
               accent={accent}
-              target={template?.targets?.[ex.id]}
-              isOpen={open === ex.id}
-              onToggle={() => setOpen(open === ex.id ? null : ex.id)}
-              onLogged={handleLogged}
+              target={template?.targets?.[s.ex.id]}
+              round={s.round}
+              rounds={s.rounds}
+              isOpen={open === s.slot}
+              onToggle={() => setOpen(open === s.slot ? null : s.slot)}
+              onLogged={() => handleLogged(s.slot)}
             />
           ))
         )}
