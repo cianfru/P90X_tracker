@@ -52,6 +52,30 @@ export function Session({
     const r = template?.rounds ?? 1
     return Array.from({ length: r }).flatMap(() => exercises.map((e) => e.id))
   }, [exercises, template?.sequence, template?.rounds])
+
+  /*
+   * Cards follow the PERFORMED order, taken from the walk.
+   *
+   * `exerciseIds` is the catalog's list and carries no promise of matching
+   * `sequence`. In legs & back it didn't: the two moves never logged in seven
+   * years (single-leg wall squat, three-way lunge) were appended to the end by
+   * the importer, so from move 10 the cards ran a position ahead of the video
+   * and those two sat orphaned below the real last exercise. Deriving the order
+   * from the walk means the sequence is the single source of truth, and no
+   * future template can drift the same way.
+   */
+  const cards = useMemo(() => {
+    if (!exercises?.length) return exercises ?? []
+    const firstAt = new Map<string, number>()
+    walk.forEach((id, i) => {
+      if (!firstAt.has(id)) firstAt.set(id, i)
+    })
+    return [...exercises].sort(
+      (a, b) =>
+        (firstAt.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+        (firstAt.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+    )
+  }, [exercises, walk])
   const [pos, setPos] = useState(0)
   useEffect(() => setPos(0), [sessionId])
   useEffect(() => {
@@ -208,11 +232,11 @@ export function Session({
           <BeastGrid
             sessionId={sessionId}
             template={template}
-            exById={new Map((exercises ?? []).map((e) => [e.id, e]))}
+            exById={new Map(cards.map((e) => [e.id, e]))}
             accent={accent}
           />
         ) : (
-          exercises?.map((ex) => (
+          cards.map((ex) => (
             <ExerciseCard
               key={ex.id}
               exercise={ex}
