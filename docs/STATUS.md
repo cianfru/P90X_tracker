@@ -248,6 +248,16 @@ days rather than skipping, so the window degrades to `short`, never `none`, and
 the advice is always how to scale the session down — it never says "skip it".
 `SHORT_WINDOW_HOURS` (8) in `roster.ts` is the one number worth tuning.
 
+**Safari needs a shim.** pdf.js's `getTextContent` ends with `for await (const
+value of readableStream)`, and async-iterating a ReadableStream needs
+`ReadableStream.prototype[Symbol.asyncIterator]` — which Chrome and Firefox ship
+and SAFARI DOES NOT. Every desktop test passed while the owner's iPhone failed
+with "undefined is not a function (near '...e of t...')", Safari's phrasing of
+that exact minified `for await (const e of t)`. It's a missing host-object
+method, so transpiling can't reach it and the legacy build doesn't help; it's
+polyfilled in `rosterPdf.ts`. Reproduce by deleting the symbol in Chromium —
+same failure, worded "t is not async iterable".
+
 pdf.js (~1.7 MB) is lazily imported AND excluded from the precache
 (`globIgnores`), then runtime-cached: installs stay lean, and the second import
 onward works offline.
