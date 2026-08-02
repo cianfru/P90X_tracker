@@ -60,11 +60,23 @@ import { addDays, weekStart, type PlannedDay } from './plan'
 /** Weeks of history the target is learned from. */
 const WINDOW_WEEKS = 52
 /**
- * Where in that year's spread the bar sits. 0.5 (the median) is beaten half the
- * time by definition and made the budget trivial; 0.75 asks for a good week.
- * The one number to move if the weekly bar feels wrong.
+ * Where in that year's spread the bar sits — the one number to move if the
+ * weekly bar feels wrong.
+ *
+ * 0.5 (the median) is beaten half the time by definition and made the budget
+ * trivial. 0.75 was still too soft. On the owner's trailing year:
+ *
+ *   p75  190 pts  ~63 x3  beaten 13 weeks of 52
+ *   p85  218 pts  ~73 x3  beaten  8
+ *   p90  232 pts  ~77 x3  beaten  6
+ *   p95  250 pts  ~83 x3  beaten  3
+ *
+ * p90 is a top-10% week: three genuinely hard sessions, and demonstrably
+ * reachable — he's hit it six times in the last year, with an all-time best of
+ * 280. p95 would sit within touching distance of the 85-point per-session
+ * ceiling, at which point the card just reports "out of reach" all week.
  */
-const TARGET_PCT = 0.75
+const TARGET_PCT = 0.9
 /** Below this many weeks of history, use everything there is. */
 const MIN_WEEKS = 8
 /**

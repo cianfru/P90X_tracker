@@ -6,10 +6,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig({
   // Build stamp — surfaced in the Account screen so you can confirm which
-  // version the (offline-cached) app is actually running.
+  // version the (offline-cached) app is actually running. Carries the commit
+  // sha as well as the time: twice now a bug has looked unfixed when the real
+  // answer was an installed PWA still serving the previous build, and a sha
+  // settles that in one glance instead of a round trip.
   define: {
     __BUILD_TIME__: JSON.stringify(
-      new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC',
+      new Date().toISOString().slice(0, 16).replace('T', ' ') +
+        ' UTC · ' +
+        (process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'dev'),
     ),
   },
   plugins: [
