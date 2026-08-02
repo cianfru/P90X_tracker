@@ -35,6 +35,7 @@ try {
     localStorage.getItem(SCOPE_KEY) !== SCOPE
   ) {
     localStorage.removeItem(ACCOUNT_KEY)
+    localStorage.setItem(SCOPE_KEY, SCOPE)
   }
 } catch {
   /* storage unavailable — nothing to migrate */

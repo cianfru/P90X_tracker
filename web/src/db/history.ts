@@ -81,11 +81,21 @@ export async function seedHistory(
 ): Promise<number> {
   if (!(await needsHistorySeed())) return 0
 
-  // Clear any partial import from a previous interrupted run (import-only rows).
-  if ((await db.sessions.count()) > 0) {
+  // Clear any partial import from a previous interrupted run.
+  // ONLY remove rows whose deviceId is the import sentinel — never touch
+  // user-logged sessions. An earlier version called .clear() which was safe
+  // only as long as the localStorage guard held; iOS Safari can evict
+  // localStorage while keeping IndexedDB, so the guard is insufficient.
+  const stale = (await db.sessions.toArray()).filter(
+    (s) => s.deviceId === IMPORT_DEVICE,
+  )
+  if (stale.length) {
+    const staleIds = stale.map((s) => s.id)
     await db.transaction('rw', db.sessions, db.sets, async () => {
-      await db.sets.clear()
-      await db.sessions.clear()
+      for (const id of staleIds) {
+        await db.sets.where('sessionId').equals(id).delete()
+      }
+      await db.sessions.bulkDelete(staleIds)
     })
   }
 
