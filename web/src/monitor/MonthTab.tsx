@@ -9,10 +9,15 @@ import {
   Shuffle,
   TriangleAlert,
   X,
+  Zap,
 } from 'lucide-react'
 import type { Program, Session, WorkoutSet, WorkoutTemplate } from '../db'
 import { CATALOG, db } from '../db'
-import { startOrResumeSession } from '../db/repo'
+import { quickLogSession, startOrResumeSession } from '../db/repo'
+import {
+  QuickLogToast,
+  type QuickLogToastState,
+} from '../logger/QuickLogToast'
 import { planSchedule, type PlannedDay } from '../schedule/plan'
 import { computeWeekLoad, neededIntensity } from '../schedule/weekLoad'
 import { readinessColor } from '../schedule/roster'
@@ -181,6 +186,7 @@ export function MonthTab({
   const [open, setOpen] = useState<{ id: string; score: number } | null>(null)
   // Day we're adding a past workout to; null when the picker is closed.
   const [adding, setAdding] = useState<string | null>(null)
+  const [toast, setToast] = useState<QuickLogToastState | null>(null)
 
   if (open) {
     return (
@@ -610,8 +616,14 @@ export function MonthTab({
             // whole action, so don't drop into an empty logger.
             if (!untracked) onStart(id)
           }}
+          onQuick={async (workoutId, name) => {
+            const result = await quickLogSession(workoutId, adding)
+            setAdding(null)
+            setToast({ name, result })
+          }}
         />
       )}
+      {toast && <QuickLogToast toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
 }
@@ -626,11 +638,14 @@ function PickWorkout({
   templates,
   onClose,
   onPick,
+  onQuick,
 }: {
   date: string
   templates: WorkoutTemplate[]
   onClose: () => void
   onPick: (workoutId: string, untracked: boolean) => void
+  /** Record the workout on this day as a copy of the time before it. */
+  onQuick: (workoutId: string, name: string) => void
 }) {
   const groups = useMemo(() => {
     const m = new Map<string, WorkoutTemplate[]>()
@@ -675,18 +690,32 @@ function PickWorkout({
               <div className="eyebrow mb-1.5">{program}</div>
               <div className="space-y-1.5">
                 {list.map((t) => (
-                  <button
+                  <div
                     key={t.id}
-                    onClick={() => onPick(t.id, !!t.untracked)}
-                    className="press flex w-full items-center justify-between gap-3 rounded-xl border border-hair bg-white/[0.03] px-4 py-3 text-left"
+                    className="flex items-center gap-1.5 rounded-xl border border-hair bg-white/[0.03] pr-1.5"
                   >
-                    <span className="truncate text-sm font-semibold capitalize">
-                      {t.name}
-                    </span>
-                    <span className="nums shrink-0 text-[12px] text-ink-3">
-                      {t.untracked ? 'tap to log' : `${t.exerciseIds.length} moves`}
-                    </span>
-                  </button>
+                    <button
+                      onClick={() => onPick(t.id, !!t.untracked)}
+                      className="press flex min-w-0 flex-1 items-center justify-between gap-3 py-3 pl-4 text-left"
+                    >
+                      <span className="truncate text-sm font-semibold capitalize">
+                        {t.name}
+                      </span>
+                      <span className="nums shrink-0 text-[12px] text-ink-3">
+                        {t.untracked ? 'tap to log' : `${t.exerciseIds.length} moves`}
+                      </span>
+                    </button>
+                    {!t.untracked && (
+                      <button
+                        onClick={() => onQuick(t.id, t.name)}
+                        aria-label={`quick add ${t.name}`}
+                        title="Add as a copy of the previous session"
+                        className="press flex shrink-0 items-center gap-1 rounded-lg bg-[#34f5a0]/10 px-2.5 py-2 text-[11px] font-bold text-[#34f5a0]"
+                      >
+                        <Zap size={13} strokeWidth={2.6} /> Quick add
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

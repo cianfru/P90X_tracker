@@ -34,8 +34,13 @@ export function Stepper({
   // While focused the field shows exactly what was typed (an empty field, a
   // trailing "17."), and only parseable values reach the caller.
   const [draft, setDraft] = useState<string | null>(null)
+  const shown = draft || String(value)
+  // Long values step the type down rather than run under the buttons.
+  const size =
+    shown.length <= 3 ? 'text-3xl' : shown.length === 4 ? 'text-2xl' : 'text-xl'
+
   return (
-    <div className="flex-1">
+    <div className="w-full flex-1">
       <div className="eyebrow mb-2 text-center">{label}</div>
       <div className="flex items-center justify-between gap-2 rounded-2xl border border-hair bg-black/25 p-1.5">
         <button
@@ -68,7 +73,7 @@ export function Stepper({
             if (clean !== '' && Number.isFinite(n)) onChange(Math.max(min, n))
           }}
           onBlur={() => setDraft(null)}
-          className="nums w-0 min-w-0 flex-1 bg-transparent text-center text-3xl font-bold caret-current outline-none placeholder:opacity-35"
+          className={`nums w-0 min-w-0 flex-1 bg-transparent text-center font-bold caret-current outline-none placeholder:opacity-35 ${size}`}
           style={{ color: tint }}
         />
         <button

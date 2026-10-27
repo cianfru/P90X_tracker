@@ -103,7 +103,8 @@ export function ExerciseCard({
     if (!prev) return
     setReps(prev.reps)
     if (weighted) {
-      if (prev.weightKg != null) setWeight(prev.weightKg)
+      // Last time without kg means no kg this time too, not a 20 kg default.
+      setWeight(prev.weightKg ?? 0)
     } else {
       setVestOn(!!prev.weightKg)
       if (prev.weightKg) setVestKg(prev.weightKg)
@@ -158,7 +159,8 @@ export function ExerciseCard({
       sessionId,
       exerciseId: exercise.id,
       reps,
-      weightKg: weighted ? weight : addedKg,
+      // 0 kg on a weighted move is stored as "no weight", like the history.
+      weightKg: weighted ? weight || null : addedKg,
       modifiers: mods,
       struggle,
     })
@@ -244,7 +246,9 @@ export function ExerciseCard({
               e.preventDefault()
               void logNext()
             }}
-            className="mt-3 flex items-center justify-between gap-3"
+            // Two numbers (reps + kg) stack, so each keeps a full-width
+            // field and no digit hides behind the − / + buttons.
+            className="mt-3 flex flex-col gap-3"
           >
             <Stepper
               label={`reps · set ${setIndex + 1}`}

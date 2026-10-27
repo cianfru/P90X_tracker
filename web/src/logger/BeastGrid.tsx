@@ -177,7 +177,7 @@ function CellEditor({
       setWeight(existing.weightKg ?? 20)
     } else if (last) {
       setReps(prev?.reps ?? (weighted ? 10 : 15))
-      setWeight(prev?.weightKg ?? 20)
+      setWeight(prev ? (prev.weightKg ?? 0) : 20)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [last, existing])
@@ -188,7 +188,7 @@ function CellEditor({
       exerciseId: exercise.id,
       round,
       reps: reps ?? 0,
-      weightKg: weighted ? (weight ?? 0) : null,
+      weightKg: weighted ? weight || null : null,
     })
     onClose()
   }
@@ -229,7 +229,7 @@ function CellEditor({
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3">
           <Stepper
             label="reps"
             value={reps ?? 0}

@@ -112,6 +112,84 @@ export async function logSetAt(input: {
   await enqueue('sets', set.id)
 }
 
+export interface QuickLogResult {
+  sessionId: string
+  /** Sets copied in (0 for a routine with nothing to count). */
+  copied: number
+  /** Date of the session they were copied from. */
+  from?: string
+  /** The day already had this workout logged with sets — nothing was added. */
+  existed: boolean
+}
+
+/**
+ * Quick log: record a workout on `date` (default today) as a copy of the last
+ * time you did it — every set, same reps / kg / modifiers — without stepping
+ * through the logger. For days you trained but didn't log as you went.
+ *
+ * The source is the most recent earlier session of the SAME workout that has
+ * sets; copies are new rows (new ids, timestamps on the target day), so the
+ * original is untouched and the copy can be edited or deleted like any log.
+ * A day that already has this workout with sets is left alone rather than
+ * doubled.
+ */
+export async function quickLogSession(
+  workoutId: string,
+  date: string = todayISO(),
+): Promise<QuickLogResult> {
+  const sameDay = (await db.sessions.where({ workoutId, date }).toArray()).find(
+    (s) => !s.deleted,
+  )
+  if (sameDay) {
+    const live = (await db.sets.where('sessionId').equals(sameDay.id).toArray()).filter(
+      (s) => !s.deleted,
+    )
+    if (live.length) return { sessionId: sameDay.id, copied: 0, existed: true }
+  }
+
+  const earlier = (await db.sessions.where('workoutId').equals(workoutId).toArray())
+    .filter((s) => !s.deleted && s.date < date)
+    .sort((a, b) =>
+      a.date === b.date ? b.createdAt - a.createdAt : a.date < b.date ? 1 : -1,
+    )
+  let source: { date: string; sets: WorkoutSet[] } | undefined
+  for (const s of earlier) {
+    const sets = (await db.sets.where('sessionId').equals(s.id).toArray()).filter(
+      (x) => !x.deleted,
+    )
+    if (sets.length) {
+      source = { date: s.date, sets }
+      break
+    }
+  }
+
+  const sessionId = await startOrResumeSession(
+    workoutId,
+    date === todayISO() ? undefined : date,
+  )
+  if (!source) return { sessionId, copied: 0, existed: false }
+
+  const base =
+    date === todayISO() ? Date.now() : new Date(`${date}T12:00:00`).getTime()
+  const copies: WorkoutSet[] = source.sets
+    .sort((a, b) => a.loggedAt - b.loggedAt)
+    .map((s, i) => ({
+      id: uid(),
+      sessionId,
+      exerciseId: s.exerciseId,
+      reps: s.reps,
+      weightKg: s.weightKg,
+      round: s.round,
+      modifiers: s.modifiers,
+      struggle: false,
+      loggedAt: base + i * 1000,
+      deleted: false,
+    }))
+  await db.sets.bulkAdd(copies)
+  for (const c of copies) await enqueue('sets', c.id)
+  return { sessionId, copied: copies.length, from: source.date, existed: false }
+}
+
 /**
  * Update a session's per-day metadata (location / form / notes / supplements)
  * and enqueue it for sync. Empty string / undefined clears a field.

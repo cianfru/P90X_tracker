@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, ChevronLeft, ChevronRight, Dumbbell, Plus } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Dumbbell, Plus, Zap } from 'lucide-react'
 import { db } from '../db'
 import type { Program } from '../db'
-import { startOrResumeSession } from '../db/repo'
+import { quickLogSession, startOrResumeSession } from '../db/repo'
+import { QuickLogToast, type QuickLogToastState } from './QuickLogToast'
 import { auraFor, programAccent, setAura } from './programColor'
 import { todayISO } from '../lib/id'
 import { Label } from './ui'
@@ -79,6 +80,13 @@ export function Home({
     onOpen(await startOrResumeSession(workoutId))
   }
 
+  // Trained without logging as you went? One tap records today as a copy of
+  // the last session of this workout.
+  const [toast, setToast] = useState<QuickLogToastState | null>(null)
+  async function quick(workoutId: string, name: string) {
+    setToast({ name, result: await quickLogSession(workoutId) })
+  }
+
   // One tap = the session exists, with no sets. Enough for the rotation to know
   // the day happened; nothing to type. Idempotent — tapping twice won't
   // duplicate, since startOrResumeSession resumes the same day's session.
@@ -128,37 +136,61 @@ export function Home({
           </div>
         )}
         <div className="mt-4 space-y-2.5">
-          {workouts.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => start(t.id)}
-              className="press card flex w-full items-center gap-3 px-4 py-4 text-left"
-            >
-              <span
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                style={{
-                  background: `${program.accent}1f`,
-                  color: program.accent,
-                }}
-              >
-                <Dumbbell size={20} strokeWidth={2.4} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold capitalize">
-                  {t.name}
-                </span>
-                <span className="nums block text-[13px] text-ink-3">
-                  {t.exerciseIds.length} moves
-                  {(t.rounds ?? 1) > 1
-                    ? ` · ${t.rounds} rounds`
-                    : t.sequence
-                      ? ' · mixed rounds'
-                      : ''}
-                </span>
-              </span>
-              <ChevronRight size={18} className="shrink-0 text-ink-3" />
-            </button>
-          ))}
+          {workouts.map((t) => {
+            const done = doneToday.has(t.id)
+            return (
+              <div key={t.id} className="card flex items-center gap-1 pr-2">
+                <button
+                  onClick={() => start(t.id)}
+                  className="press flex min-w-0 flex-1 items-center gap-3 py-4 pl-4 text-left"
+                >
+                  <span
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                    style={{
+                      background: `${program.accent}1f`,
+                      color: program.accent,
+                    }}
+                  >
+                    <Dumbbell size={20} strokeWidth={2.4} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold capitalize">
+                      {t.name}
+                    </span>
+                    <span className="nums block text-[13px] text-ink-3">
+                      {t.exerciseIds.length} moves
+                      {(t.rounds ?? 1) > 1
+                        ? ` · ${t.rounds} rounds`
+                        : t.sequence
+                          ? ' · mixed rounds'
+                          : ''}
+                    </span>
+                  </span>
+                </button>
+                {/* Quick log: today = a copy of last time, in one tap. */}
+                <button
+                  onClick={() => quick(t.id, t.name)}
+                  aria-label={`quick log ${t.name} today`}
+                  title="Log today as a copy of last time"
+                  className="press flex w-[4.5rem] shrink-0 flex-col items-center gap-1 rounded-xl py-2"
+                  style={
+                    done
+                      ? { background: '#34f5a01f', color: '#34f5a0' }
+                      : { background: `${program.accent}14`, color: program.accent }
+                  }
+                >
+                  {done ? (
+                    <Check size={17} strokeWidth={3} />
+                  ) : (
+                    <Zap size={17} strokeWidth={2.4} />
+                  )}
+                  <span className="text-[10px] leading-none font-bold">
+                    {done ? 'Today ✓' : 'Quick log'}
+                  </span>
+                </button>
+              </div>
+            )
+          })}
         </div>
 
         {/* Nothing to count in these, but the cycle still needs to know they
@@ -212,6 +244,7 @@ export function Home({
             </div>
           </div>
         )}
+        {toast && <QuickLogToast toast={toast} onClose={() => setToast(null)} />}
       </div>
     )
   }
