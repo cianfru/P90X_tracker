@@ -226,7 +226,8 @@ export function Account({
                 : 'Sign in with Google'}
           </button>
           <p className="mt-2 text-center text-[12px] text-ink-3">
-            Your workouts stay on this device until you do.
+            Once per device — it stays signed in after that, with no more
+            Google pop-ups.
           </p>
         </>
       )}

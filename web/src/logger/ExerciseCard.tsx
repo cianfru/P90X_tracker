@@ -1,40 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowRight, Flame, Plus, Weight, X } from 'lucide-react'
-import type { Exercise, Modifier } from '../db'
+import type { Exercise, Modifier, Session } from '../db'
 import { MODIFIERS, MODIFIER_META } from '../db'
 import { logSet, sessionExerciseSets, softDeleteSet } from '../db/repo'
-import { effortOf, effortTone, exerciseStats } from './effort'
-import type { EffortTone, HistEntry } from './effort'
+import { effortOf } from './effort'
+import { lastTimeFor, prevSetAt, type PrevSet } from './lastTime'
 import { fmtDate } from '../lib/id'
 import { Chip, Stepper } from './ui'
 
 /*
- * One exercise in a session. Open card shows:
- *  - stat chips (prev / avg / max / min) + the last 4 sessions for this move
- *  - reps (+kg for weighted moves, optional vest/belt kg for bodyweight ones)
- *  - modifier chips and a struggle toggle
- *  - a LIVE effort colour (green ≤ your recent average, amber = pushing,
- *    red = at/over your all-time max) driven by the effort engine
- *  - "Log & next": one tap logs the set and advances to the next exercise.
+ * One performed slot of the routine. The open card is built for speed:
+ *
+ *  - it opens already holding what you did LAST TIME on this set of this
+ *    workout — reps, kg and modifiers — so a repeat is a single tap;
+ *  - any number can be typed (tap it) or nudged (− / +);
+ *  - the colour says how today compares: accent = matching last time,
+ *    amber = beating it, rose = best ever in this workout.
+ *
+ * "Log & next" logs and opens the card below; "+ Set" logs and stays.
  */
 
-/** Live effort colour: baseline uses the program accent; amber = pushing above
- *  your recent average; rose = at/over your all-time max. */
-function toneHex(tone: EffortTone, accent: string): string {
+type Tone = 'ok' | 'push' | 'record'
+
+function toneHex(tone: Tone, accent: string): string {
   if (tone === 'push') return '#fbbf24'
   if (tone === 'record') return '#fb7185'
   return accent
 }
 
-function histLabel(h: HistEntry): string {
-  const mods = h.modifiers.map((m) => MODIFIER_META[m].label).join(',')
-  return `${h.reps}${h.weightKg ? `×${h.weightKg}` : ''}${mods ? ` ·${mods}` : ''}`
+function setLabel(s: PrevSet): string {
+  const mods = s.modifiers.map((m) => MODIFIER_META[m].label).join(',')
+  return `${s.reps}${s.weightKg ? `×${s.weightKg}` : ''}${mods ? ` ·${mods}` : ''}`
 }
 
 export function ExerciseCard({
   exercise,
-  sessionId,
+  session,
   accent,
   target,
   round,
@@ -44,9 +46,9 @@ export function ExerciseCard({
   onLogged,
 }: {
   exercise: Exercise
-  sessionId: string
+  session: Session
   accent: string
-  /** Mixer pre-fill target (reps/weight) — overrides the history default. */
+  /** Mixer pre-fill target (reps/weight) — overrides last time. */
   target?: { reps?: number; weightKg?: number }
   /** Which time round this move comes up, and how many times in total. Only
    *  shown when a move is performed more than once in the routine. */
@@ -57,14 +59,23 @@ export function ExerciseCard({
   onLogged?: (exerciseId: string) => void
 }) {
   const weighted = exercise.type === 'weighted'
-  const sets =
+  const sessionId = session.id
+  const allSets =
     useLiveQuery(
       () => sessionExerciseSets(sessionId, exercise.id),
       [sessionId, exercise.id],
     ) ?? []
-  const stats = useLiveQuery(
-    () => exerciseStats(exercise.id, exercise.type),
-    [exercise.id, exercise.type],
+  // A move done in separate rounds has one card per round, and each card
+  // shows only its own set(s): set N belongs to round N, and any extra sets
+  // added with "+ Set" stay on the last round's card.
+  const repeated = !!rounds && rounds > 1
+  const r = round ?? 1
+  const sets = repeated
+    ? allSets.filter((_, i) => (r === rounds ? i >= r - 1 : i === r - 1))
+    : allSets
+  const last = useLiveQuery(
+    () => lastTimeFor(session, exercise.id, exercise.type),
+    [session.id, session.workoutId, session.date, session.createdAt, exercise.id],
   )
 
   const [reps, setReps] = useState(weighted ? 10 : 20)
@@ -76,7 +87,12 @@ export function ExerciseCard({
   const touched = useRef(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // Pre-fill: a Mixer target wins; otherwise the recent standard average.
+  // Which set of this move the card is about to log: round N's first set is
+  // set N even if you reach it first; after that, the next one in sequence.
+  const setIndex = repeated && !sets.length ? r - 1 : allSets.length
+  const prev = prevSetAt(last, setIndex)
+
+  // Pre-fill: a Mixer target wins; otherwise the same set last time.
   useEffect(() => {
     if (touched.current) return
     if (target) {
@@ -84,11 +100,19 @@ export function ExerciseCard({
       if (weighted && target.weightKg != null) setWeight(target.weightKg)
       return
     }
-    if (stats) {
-      if (stats.targetReps != null) setReps(stats.targetReps)
-      if (weighted && stats.targetWeightKg != null) setWeight(stats.targetWeightKg)
+    if (!prev) return
+    setReps(prev.reps)
+    if (weighted) {
+      if (prev.weightKg != null) setWeight(prev.weightKg)
+    } else {
+      setVestOn(!!prev.weightKg)
+      if (prev.weightKg) setVestKg(prev.weightKg)
     }
-  }, [stats, weighted, target])
+    setMods(prev.modifiers)
+    // `prev` is derived from these; depending on the object would re-run on
+    // every live-query refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [last, setIndex, target, weighted])
 
   // Log-&-next opens the next card programmatically — bring it into view.
   useEffect(() => {
@@ -97,26 +121,37 @@ export function ExerciseCard({
     }
   }, [isOpen])
 
-  const nextSetNo = sets.length + 1
   const label = exercise.displayName ?? exercise.name
   const addedKg = !weighted && vestOn ? vestKg : null
-  const currentEffort = effortOf(
-    { reps, weightKg: weighted ? weight : addedKg, modifiers: mods },
-    exercise.type,
-  )
-  const tone: EffortTone = stats ? effortTone(currentEffort, stats) : 'none'
+  const now = { reps, weightKg: weighted ? weight : addedKg, modifiers: mods }
+  const effort = effortOf(now, exercise.type)
+  const prevEffort = prev ? effortOf(prev, exercise.type) : undefined
+  const tone: Tone =
+    last?.bestEffort != null && effort > last.bestEffort + 1e-9
+      ? 'record'
+      : prevEffort != null && effort > prevEffort + 1e-9
+        ? 'push'
+        : 'ok'
   const toneColor = toneHex(tone, accent)
 
-  const changeReps = (v: number) => {
-    touched.current = true
-    setReps(v)
+  // What changed since last time, in the units you'd say it out loud.
+  let delta: string | null = null
+  if (prev) {
+    const dKg = (now.weightKg ?? 0) - (prev.weightKg ?? 0)
+    const dReps = reps - prev.reps
+    const parts = []
+    if (dReps) parts.push(`${dReps > 0 ? '+' : ''}${dReps} reps`)
+    if (dKg) parts.push(`${dKg > 0 ? '+' : ''}${+dKg.toFixed(1)} kg`)
+    delta = parts.length ? parts.join(' · ') : 'same as last time'
   }
-  const changeWeight = (v: number) => {
+
+  const touch = () => {
     touched.current = true
-    setWeight(v)
   }
-  const toggleMod = (m: Modifier) =>
+  const toggleMod = (m: Modifier) => {
+    touch()
     setMods((p) => (p.includes(m) ? p.filter((x) => x !== m) : [...p, m]))
+  }
 
   async function commit() {
     await logSet({
@@ -127,20 +162,13 @@ export function ExerciseCard({
       modifiers: mods,
       struggle,
     })
-    setMods([])
     setStruggle(false)
-    setVestOn(false)
+    // Let the next set pre-fill from its own counterpart last time.
+    touched.current = false
   }
-  // Log this set and advance to the next exercise (the circuit flow).
   async function logNext() {
     await commit()
     onLogged?.(exercise.id)
-  }
-  // Log this set but STAY on the exercise — for set-based moves (e.g. Body
-  // Beast) where you do several sets before moving on. The card reopens the
-  // next round automatically.
-  async function logStay() {
-    await commit()
   }
 
   return (
@@ -154,10 +182,10 @@ export function ExerciseCard({
     >
       <button
         onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-4"
+        className="flex w-full items-center justify-between gap-3 px-4 py-4"
       >
-        <div className="flex items-center gap-2.5 text-left">
-          <span className="font-semibold">{label}</span>
+        <div className="flex min-w-0 items-center gap-2.5 text-left">
+          <span className="truncate font-semibold">{label}</span>
           {rounds && rounds > 1 && (
             <span className="nums shrink-0 rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] font-bold text-ink-3">
               {round}/{rounds}
@@ -165,18 +193,16 @@ export function ExerciseCard({
           )}
           {sets.length > 0 && (
             <span
-              className="nums rounded-full px-2 py-0.5 text-xs font-bold"
+              className="nums shrink-0 rounded-full px-2 py-0.5 text-xs font-bold"
               style={{ background: `${accent}30`, color: accent }}
             >
               {sets.length}×
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {sets.length === 0 && stats?.prev && (
-            <span className="nums text-xs text-ink-3">
-              last {histLabel(stats.prev)}
-            </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {sets.length === 0 && prev && (
+            <span className="nums text-xs text-ink-3">last {setLabel(prev)}</span>
           )}
           <div className="flex gap-1">
             {sets.map((s) => (
@@ -186,7 +212,6 @@ export function ExerciseCard({
               >
                 {s.reps}
                 {s.weightKg ? `×${s.weightKg}` : ''}
-                {s.struggle ? '·' : ''}
               </span>
             ))}
           </div>
@@ -194,60 +219,51 @@ export function ExerciseCard({
       </button>
 
       {isOpen && (
-        <div className="border-t border-hair px-4 pt-1 pb-4">
-          {/* Stat chips: prev / avg (target) / max / min — standard baseline */}
-          {stats && stats.history.length > 0 && (
-            <div className="nums mt-3 flex flex-wrap gap-1.5 text-xs font-semibold">
-              {stats.prev && (
-                <span className="rounded-lg bg-sky-400/10 px-2.5 py-1 text-sky-300">
-                  prev {histLabel(stats.prev)}
-                </span>
-              )}
-              {(weighted ? stats.targetWeightKg : stats.targetReps) != null && (
-                <span
-                  className="rounded-lg px-2.5 py-1"
-                  style={{ background: `${accent}1f`, color: accent }}
-                >
-                  avg {weighted ? stats.targetWeightKg : stats.targetReps}
-                </span>
-              )}
-              {stats.maxRaw != null && (
-                <span className="rounded-lg bg-amber-400/10 px-2.5 py-1 text-amber-300">
-                  max {stats.maxRaw}
-                </span>
-              )}
-              {stats.minRaw != null && (
-                <span className="rounded-lg bg-white/[0.06] px-2.5 py-1 text-ink-3">
-                  min {stats.minRaw}
-                </span>
-              )}
-            </div>
-          )}
+        <div className="border-t border-hair px-4 pt-3 pb-4">
+          {/* Last time, this workout */}
+          <div className="nums flex items-center justify-between gap-2 text-xs">
+            {prev ? (
+              <span className="rounded-lg bg-sky-400/10 px-2.5 py-1 font-semibold text-sky-300">
+                last time {setLabel(prev)}
+              </span>
+            ) : (
+              <span className="font-medium text-ink-3">
+                First time in this workout
+              </span>
+            )}
+            {delta && (
+              <span className="font-semibold" style={{ color: toneColor }}>
+                {tone === 'record' ? 'best ever · ' : ''}
+                {delta}
+              </span>
+            )}
+          </div>
 
-          {/* Last sessions for this move */}
-          {stats && stats.history.length > 1 && (
-            <div className="nums mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-3">
-              {stats.history.map((h, i) => (
-                <div key={i} className="flex justify-between">
-                  <span>{fmtDate(h.date)}</span>
-                  <span className="font-medium text-ink-2">{histLabel(h)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-4 flex items-center justify-between gap-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void logNext()
+            }}
+            className="mt-3 flex items-center justify-between gap-3"
+          >
             <Stepper
-              label={`reps · R${nextSetNo}`}
+              label={`reps · set ${setIndex + 1}`}
               value={reps}
-              onChange={changeReps}
+              onChange={(v) => {
+                touch()
+                setReps(v)
+              }}
               valueColor={toneColor}
             />
             {weighted && (
               <Stepper
                 label="kg"
                 value={weight}
-                onChange={changeWeight}
+                decimal
+                onChange={(v) => {
+                  touch()
+                  setWeight(v)
+                }}
                 accent="sky"
               />
             )}
@@ -255,11 +271,16 @@ export function ExerciseCard({
               <Stepper
                 label="vest kg"
                 value={vestKg}
-                onChange={setVestKg}
+                decimal
+                onChange={(v) => {
+                  touch()
+                  setVestKg(v)
+                }}
                 accent="sky"
               />
             )}
-          </div>
+            <button type="submit" hidden aria-hidden tabIndex={-1} />
+          </form>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             {MODIFIERS.map((m) => {
@@ -280,7 +301,10 @@ export function ExerciseCard({
               <Chip
                 active={vestOn}
                 tone="sky"
-                onClick={() => setVestOn((v) => !v)}
+                onClick={() => {
+                  touch()
+                  setVestOn((v) => !v)
+                }}
                 title="weighted vest / belt"
               >
                 <Weight size={11} className="-mt-0.5 inline" /> +kg
@@ -298,7 +322,7 @@ export function ExerciseCard({
 
           <div className="mt-4 flex gap-2">
             <button
-              onClick={logStay}
+              onClick={() => void commit()}
               aria-label="log set and stay for another"
               title="log this set, stay for another"
               className="press flex shrink-0 items-center justify-center gap-1 rounded-2xl border px-4 py-3.5 text-[15px] font-bold"
@@ -307,7 +331,7 @@ export function ExerciseCard({
               <Plus size={18} strokeWidth={2.6} /> Set
             </button>
             <button
-              onClick={logNext}
+              onClick={() => void logNext()}
               className="press flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-bold text-[#06140d]"
               style={{
                 background: toneColor,
@@ -326,8 +350,8 @@ export function ExerciseCard({
                   className="nums flex items-center justify-between rounded-xl bg-black/25 px-3 py-2 text-xs text-ink-2"
                 >
                   <span>
-                    <span className="font-semibold text-ink-3">R{s.round}</span> ·{' '}
-                    {s.reps}
+                    <span className="font-semibold text-ink-3">Set {s.round}</span>{' '}
+                    · {s.reps}
                     {s.weightKg ? `×${s.weightKg}kg` : ' reps'}
                     {s.modifiers.length
                       ? ' · ' +
@@ -342,6 +366,20 @@ export function ExerciseCard({
                   >
                     <X size={15} />
                   </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* This move in the previous sessions of THIS workout */}
+          {last && last.sessions.length > 0 && (
+            <div className="nums mt-3 space-y-1 border-t border-hair pt-3 text-xs text-ink-3">
+              {last.sessions.map((p, i) => (
+                <div key={i} className="flex justify-between gap-3">
+                  <span className="shrink-0">{fmtDate(p.date)}</span>
+                  <span className="truncate text-right font-medium text-ink-2">
+                    {p.sets.map(setLabel).join('  ·  ')}
+                  </span>
                 </div>
               ))}
             </div>

@@ -236,18 +236,21 @@ export function Session({
       <div className="space-y-2.5 px-4 pt-4 pb-28">
         {session && <SessionMeta session={session} />}
         {template?.plan?.length ? (
-          <BeastGrid
-            sessionId={sessionId}
-            template={template}
-            exById={new Map((exercises ?? []).map((e) => [e.id, e]))}
-            accent={accent}
-          />
+          session && (
+            <BeastGrid
+              session={session}
+              template={template}
+              exById={new Map((exercises ?? []).map((e) => [e.id, e]))}
+              accent={accent}
+            />
+          )
         ) : (
+          session &&
           slots.map((s) => (
             <ExerciseCard
               key={s.key}
               exercise={s.ex}
-              sessionId={sessionId}
+              session={session}
               accent={accent}
               target={template?.targets?.[s.ex.id]}
               round={s.round}

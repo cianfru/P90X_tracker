@@ -1,9 +1,13 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Minus, Plus } from 'lucide-react'
 
 /* Small presentational atoms shared across the logger — sleek, tactile, no
  * monospace. Numbers render with tabular figures for clean alignment. */
 
+/**
+ * A number you can nudge with − / + OR tap and type. Typing is the fast path
+ * for any change bigger than a rep or two.
+ */
 export function Stepper({
   label,
   value,
@@ -12,6 +16,7 @@ export function Stepper({
   min = 0,
   accent = 'emerald',
   valueColor,
+  decimal = false,
 }: {
   label: string
   value: number
@@ -21,9 +26,14 @@ export function Stepper({
   accent?: 'emerald' | 'sky'
   /** Explicit value colour (hex) — used for live effort colour coding. */
   valueColor?: string
+  /** Allow a decimal point (plate weights like 2.5 / 17.5 kg). */
+  decimal?: boolean
 }) {
   const tint = valueColor ?? (accent === 'sky' ? '#33cbff' : '#34f5a0')
   const bump = (dir: number) => onChange(Math.max(min, value + dir * step))
+  // While focused the field shows exactly what was typed (an empty field, a
+  // trailing "17."), and only parseable values reach the caller.
+  const [draft, setDraft] = useState<string | null>(null)
   return (
     <div className="flex-1">
       <div className="eyebrow mb-2 text-center">{label}</div>
@@ -36,12 +46,31 @@ export function Stepper({
         >
           <Minus size={18} strokeWidth={2.5} />
         </button>
-        <div
-          className="nums flex-1 text-center text-3xl font-bold"
+        <input
+          aria-label={label}
+          type="text"
+          inputMode={decimal ? 'decimal' : 'numeric'}
+          pattern={decimal ? '[0-9]*[.,]?[0-9]*' : '[0-9]*'}
+          autoComplete="off"
+          value={draft ?? String(value)}
+          placeholder={String(value)}
+          // Focus empties the field, with the current value as placeholder:
+          // the first digit typed starts a fresh number, and tapping away
+          // without typing leaves the value untouched.
+          onFocus={() => setDraft('')}
+          onChange={(e) => {
+            const raw = e.target.value.replace(',', '.')
+            const clean = decimal
+              ? raw.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+              : raw.replace(/[^0-9]/g, '')
+            setDraft(clean)
+            const n = Number(clean)
+            if (clean !== '' && Number.isFinite(n)) onChange(Math.max(min, n))
+          }}
+          onBlur={() => setDraft(null)}
+          className="nums w-0 min-w-0 flex-1 bg-transparent text-center text-3xl font-bold caret-current outline-none placeholder:opacity-35"
           style={{ color: tint }}
-        >
-          {value}
-        </div>
+        />
         <button
           type="button"
           aria-label={`increase ${label}`}

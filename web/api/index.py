@@ -6,10 +6,11 @@ Endpoints (append-only, last-write-wins):
   POST /sync/push        upsert new/soft-deleted sessions + sets (by uuid)
   GET  /sync/pull?since  rows changed after a cursor
 
-Identity is Google: the client sends the Google access token it already holds,
-the server asks Google whose it is, and that person's Google user id becomes the
-account key. Every row is scoped to it, so accounts never see each other's
-data. Nothing to issue, paste or configure — signing in IS the setup.
+Identity is Google, asked once: at sign-in the client sends a Google access
+token, the server asks Google whose it is, and hands the device a long-lived
+device token tied to that Google user id (the account key). Every row is scoped
+to it, so accounts never see each other's data. Nothing to paste or configure —
+signing in IS the setup, and it happens once per device, not once per hour.
 
 Everything lives in this one module — schema DDL included — with NO sibling
 imports and no bundled data files, because serverless builders don't reliably
@@ -76,13 +77,24 @@ CREATE TABLE IF NOT EXISTS sets (
 ALTER TABLE sets ADD COLUMN IF NOT EXISTS account_id TEXT NOT NULL DEFAULT 'default';
 CREATE INDEX IF NOT EXISTS sets_acct_seq_idx ON sets (account_id, seq);
 CREATE INDEX IF NOT EXISTS sets_session_idx ON sets (session_id);
+
+-- Device sign-ins. Google is asked who you are ONCE, at sign-in; the device
+-- then holds one of these and every sync uses it. Only a hash is stored, so a
+-- leaked database row can't be replayed as a token.
+CREATE TABLE IF NOT EXISTS device_tokens (
+  token_hash  TEXT        PRIMARY KEY,
+  account_id  TEXT        NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 """
 
 
 import asyncio
 import datetime
+import hashlib
 import json
 import os
+import secrets
 import time
 import urllib.error
 import urllib.parse
@@ -222,11 +234,39 @@ app.add_middleware(
 router = APIRouter()
 
 
-async def account(authorization: str = Header(default="")) -> str:
-    """The caller's Google user id — the tenant key. 401 if not signed in."""
+# Device tokens are recognisable by prefix, so one Authorization header serves
+# both kinds and older clients still holding a Google token keep syncing.
+_DEVICE_PREFIX = "p90x_"
+
+
+def _bearer(authorization: str) -> str:
     token = authorization.removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="sign in with Google")
+    return token
+
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+async def account(authorization: str = Header(default="")) -> str:
+    """The caller's Google user id — the tenant key. 401 if not signed in."""
+    token = _bearer(authorization)
+    if token.startswith(_DEVICE_PREFIX):
+        pool = await get_pool()
+        acct = await pool.fetchval(
+            "SELECT account_id FROM device_tokens WHERE token_hash = $1",
+            _token_hash(token),
+        )
+        if not acct:
+            raise HTTPException(status_code=401, detail="device signed out")
+        return acct
+    return await _google_account(token)
+
+
+async def _google_account(token: str) -> str:
+    """Ask Google whose access token this is (cached per warm instance)."""
     hit = _token_cache.get(token)
     if hit and hit[1] > time.time():
         return hit[0]
@@ -275,6 +315,37 @@ class Set(BaseModel):
 class PushBody(BaseModel):
     sessions: list[Session] = []
     sets: list[Set] = []
+
+
+@router.post("/auth/device")
+async def link_device(authorization: str = Header(default="")):
+    """Trade a Google access token for a device token — called once, at
+    sign-in. The device never needs Google again: no hourly refresh, so no
+    sign-in popup each time the app opens."""
+    token = _bearer(authorization)
+    if token.startswith(_DEVICE_PREFIX):
+        raise HTTPException(status_code=400, detail="send a Google token")
+    acct = await _google_account(token)
+    device = _DEVICE_PREFIX + secrets.token_urlsafe(32)
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO device_tokens (token_hash, account_id) VALUES ($1, $2)",
+        _token_hash(device),
+        acct,
+    )
+    return {"token": device}
+
+
+@router.post("/auth/revoke")
+async def revoke_device(authorization: str = Header(default="")):
+    """Sign this device out server-side (its token stops working)."""
+    token = _bearer(authorization)
+    if token.startswith(_DEVICE_PREFIX):
+        pool = await get_pool()
+        await pool.execute(
+            "DELETE FROM device_tokens WHERE token_hash = $1", _token_hash(token)
+        )
+    return {"ok": True}
 
 
 @router.get("/health")

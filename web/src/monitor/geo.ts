@@ -123,7 +123,7 @@ export interface ResolvedLocation extends Place {
   raw: string
 }
 
-function haversineKm(
+export function haversineKm(
   aLat: number,
   aLon: number,
   bLat: number,

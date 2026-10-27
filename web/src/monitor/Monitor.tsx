@@ -78,20 +78,15 @@ export function Monitor({
       number
     >
     let suppDays = 0
-    const placeKeys = new Set<string>()
     let located = 0
     for (const s of live) {
       if (s.supplements?.length) {
         suppDays++
         for (const x of s.supplements) suppCounts[x]++
       }
-      const r = placeForSession(s)
-      if (r) {
-        placeKeys.add(r.key)
-        located++
-      }
+      if (placeForSession(s)) located++
     }
-    return { formTrend, suppCounts, suppDays, places: placeKeys.size, located }
+    return { formTrend, suppCounts, suppDays, located }
   }, [sessions])
 
   const intensity = useMemo<Map<string, Intensity>>(
@@ -149,7 +144,6 @@ export function Monitor({
           templates={templates ?? []}
           intensity={intensity}
           located={meta?.located ?? 0}
-          places={meta?.places ?? 0}
         />
       )}
       {tab === 'exercise' && (

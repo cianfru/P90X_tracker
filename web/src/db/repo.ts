@@ -165,22 +165,6 @@ export async function deleteSession(id: string): Promise<void> {
   for (const s of sets) await enqueue('sets', s.id)
 }
 
-/**
- * Last reps/weight logged for an exercise (across all sessions) to pre-fill the
- * next set as a target. Returns null if never logged. After the history import
- * this pulls from 7 years of data.
- */
-export async function lastSetFor(
-  exerciseId: string,
-): Promise<{ reps: number; weightKg: number | null } | null> {
-  const rows = await db.sets.where('exerciseId').equals(exerciseId).toArray()
-  const live = rows
-    .filter((s) => !s.deleted)
-    .sort((a, b) => b.loggedAt - a.loggedAt)
-  if (!live.length) return null
-  return { reps: live[0].reps, weightKg: live[0].weightKg }
-}
-
 /** Fetch exercises for a template, preserving the performed order. */
 export async function templateExercises(
   exerciseIds: string[],

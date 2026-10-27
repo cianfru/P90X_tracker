@@ -1,6 +1,7 @@
 import { db } from '../db'
 import type { Modifier, Session, Supplement, WorkoutSet } from '../db'
-import { getAccessToken, googleActive } from './googleAuth'
+import { syncUrl } from './apiBase'
+import { deviceToken, forgetDevice, googleActive } from './googleAuth'
 
 /*
  * Sync client — the other half of /api. Local-first: this never blocks the UI.
@@ -16,17 +17,6 @@ import { getAccessToken, googleActive } from './googleAuth'
  */
 
 /**
- * The sync API lives at /api on the app's OWN origin (it ships as serverless
- * functions in this same deployment), so there is nothing to configure. A
- * custom URL is only honoured for a self-hosted server on another origin.
- */
-export const syncUrl = (): string => {
-  const custom = (import.meta.env.VITE_SYNC_URL || '').toString().replace(/\/$/, '')
-  if (custom) return custom
-  return typeof location !== 'undefined' ? `${location.origin}/api` : ''
-}
-
-/**
  * Syncing is on whenever someone is signed in with Google — no separate
  * connect step, no token to paste. The server identifies the account from the
  * Google sign-in itself, so signing in on any device reaches the same data.
@@ -34,24 +24,28 @@ export const syncUrl = (): string => {
  */
 export const syncEnabled = (): boolean => googleActive()
 
-
 /**
- * Every API call carries the signed-in Google account. If the access token has
- * expired the server answers 401; we refresh silently and retry once, so a long
- * session never surfaces an auth error the user has to act on.
+ * Every API call carries this device's token — issued once at sign-in, so
+ * syncing never has to go back to Google (and never pops a Google window).
+ * A 401 means the device was signed out server-side: forget the account
+ * locally so the app shows "Local only" and offers sign-in, instead of
+ * failing quietly on every sync.
  */
 async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const send = async (token: string) =>
-    fetch(`${syncUrl()}${path}`, {
-      ...init,
-      headers: {
-        ...(init?.body ? { 'content-type': 'application/json' } : {}),
-        ...(init?.headers ?? {}),
-        authorization: `Bearer ${token}`,
-      },
-    })
-  let res = await send(await getAccessToken())
-  if (res.status === 401) res = await send(await getAccessToken(true))
+  const token = deviceToken()
+  if (!token) throw new Error('signed-out')
+  const res = await fetch(`${syncUrl()}${path}`, {
+    ...init,
+    headers: {
+      ...(init?.body ? { 'content-type': 'application/json' } : {}),
+      ...(init?.headers ?? {}),
+      authorization: `Bearer ${token}`,
+    },
+  })
+  if (res.status === 401) {
+    forgetDevice()
+    throw new Error('Signed out — sign in again to keep syncing')
+  }
   return res
 }
 

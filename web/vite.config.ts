@@ -63,7 +63,12 @@ export default defineConfig({
         // pdf.js (~1.7 MB across chunk + worker) belongs to the once-a-month
         // roster import. Precaching it would tax every install forever for a
         // screen most opens never reach; it's runtime-cached below instead.
-        globIgnores: ['**/pdf*.{js,mjs}'],
+        // MapLibre (~1 MB + worker) is the same story for the Map tab.
+        globIgnores: [
+          '**/pdf*.{js,mjs}',
+          '**/maplibre*.{js,mjs}',
+          '**/TravelMap*.{js,css}',
+        ],
         navigateFallback: '/index.html',
         // The sync API is served from /api on this same origin. Without this
         // the app-shell fallback answers any /api URL opened directly in the
@@ -90,6 +95,26 @@ export default defineConfig({
             options: {
               cacheName: 'p90x-pdfjs',
               expiration: { maxEntries: 4 },
+            },
+          },
+          {
+            urlPattern: /\/assets\/(maplibre|TravelMap)[^/]*\.(m?js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'p90x-maplibre',
+              expiration: { maxEntries: 8 },
+            },
+          },
+          // Map style, tiles, glyphs and sprites. Stale-while-revalidate: the
+          // globe paints from cache instantly (and offline) and refreshes
+          // quietly behind it.
+          {
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\//,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'p90x-map-tiles',
+              expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],

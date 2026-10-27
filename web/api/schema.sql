@@ -56,3 +56,12 @@ CREATE TABLE IF NOT EXISTS sets (
 ALTER TABLE sets ADD COLUMN IF NOT EXISTS account_id TEXT NOT NULL DEFAULT 'default';
 CREATE INDEX IF NOT EXISTS sets_acct_seq_idx ON sets (account_id, seq);
 CREATE INDEX IF NOT EXISTS sets_session_idx ON sets (session_id);
+
+-- Device sign-ins. Google is asked who you are ONCE, at sign-in; the device
+-- then holds one of these and every sync uses it. Only a hash is stored, so a
+-- leaked database row can't be replayed as a token.
+CREATE TABLE IF NOT EXISTS device_tokens (
+  token_hash  TEXT        PRIMARY KEY,
+  account_id  TEXT        NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);

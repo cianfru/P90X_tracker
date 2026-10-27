@@ -2,9 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Check, Trash2, X } from 'lucide-react'
 import { db } from '../db'
-import type { BeastGroupKind, Exercise, WorkoutSet, WorkoutTemplate } from '../db'
+import type {
+  BeastGroupKind,
+  Exercise,
+  Session,
+  WorkoutSet,
+  WorkoutTemplate,
+} from '../db'
 import { logSetAt, softDeleteSet } from '../db/repo'
-import { exerciseStats } from './effort'
+import { lastTimeFor, prevSetAt } from './lastTime'
 import { Stepper } from './ui'
 
 /*
@@ -26,16 +32,17 @@ const GROUP_LABEL: Record<BeastGroupKind, string> = {
 }
 
 export function BeastGrid({
-  sessionId,
+  session,
   template,
   exById,
   accent,
 }: {
-  sessionId: string
+  session: Session
   template: WorkoutTemplate
   exById: Map<string, Exercise>
   accent: string
 }) {
+  const sessionId = session.id
   const sets = useLiveQuery(
     () => db.sets.where('sessionId').equals(sessionId).toArray(),
     [sessionId],
@@ -54,9 +61,7 @@ export function BeastGrid({
     return m
   }, [sets])
 
-  const [editing, setEditing] = useState<{ id: string; round: number } | null>(
-    null,
-  )
+  const [editing, setEditing] = useState<{ id: string; round: number } | null>(null)
 
   return (
     <div className="space-y-5">
@@ -126,7 +131,7 @@ export function BeastGrid({
 
       {editing && exById.get(editing.id) && (
         <CellEditor
-          sessionId={sessionId}
+          session={session}
           exercise={exById.get(editing.id)!}
           round={editing.round}
           existing={byExRound.get(editing.id)?.get(editing.round) ?? null}
@@ -139,14 +144,14 @@ export function BeastGrid({
 }
 
 function CellEditor({
-  sessionId,
+  session,
   exercise,
   round,
   existing,
   accent,
   onClose,
 }: {
-  sessionId: string
+  session: Session
   exercise: Exercise
   round: number
   existing: WorkoutSet | null
@@ -154,29 +159,32 @@ function CellEditor({
   onClose: () => void
 }) {
   const weighted = exercise.type === 'weighted'
-  const stats = useLiveQuery(
-    () => exerciseStats(exercise.id, exercise.type),
-    [exercise.id],
+  const last = useLiveQuery(
+    () => lastTimeFor(session, exercise.id, exercise.type),
+    [session.id, exercise.id],
   )
+  // The same set of this workout last time — not an average, and never
+  // another workout's numbers for the same move.
+  const prev = prevSetAt(last, round - 1)
   const [reps, setReps] = useState<number | null>(null)
   const [weight, setWeight] = useState<number | null>(null)
 
-  // Prefill once: the existing cell → else this move's recent target → default.
+  // Prefill once: the existing cell → else this set last time → default.
   useEffect(() => {
     if (reps !== null) return
     if (existing) {
       setReps(existing.reps)
       setWeight(existing.weightKg ?? 20)
-    } else if (stats) {
-      setReps(stats.targetReps ?? (weighted ? 10 : 15))
-      setWeight(stats.targetWeightKg ?? 20)
+    } else if (last) {
+      setReps(prev?.reps ?? (weighted ? 10 : 15))
+      setWeight(prev?.weightKg ?? 20)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stats, existing])
+  }, [last, existing])
 
   const save = async () => {
     await logSetAt({
-      sessionId,
+      sessionId: session.id,
       exerciseId: exercise.id,
       round,
       reps: reps ?? 0,
@@ -204,6 +212,12 @@ function CellEditor({
             </div>
             <div className="eyebrow mt-0.5" style={{ color: accent }}>
               Set {round}
+              {prev && (
+                <span className="nums ml-2 text-sky-300">
+                  last time {prev.reps}
+                  {prev.weightKg ? `×${prev.weightKg}` : ''}
+                </span>
+              )}
             </div>
           </div>
           <button
@@ -228,6 +242,7 @@ function CellEditor({
               value={weight ?? 0}
               onChange={setWeight}
               accent="sky"
+              decimal
             />
           )}
         </div>
@@ -245,7 +260,10 @@ function CellEditor({
           <button
             onClick={save}
             className="press flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-bold text-[#06140d]"
-            style={{ background: accent, boxShadow: `0 10px 28px -10px ${accent}99` }}
+            style={{
+              background: accent,
+              boxShadow: `0 10px 28px -10px ${accent}99`,
+            }}
           >
             <Check size={18} strokeWidth={2.6} /> Save set {round}
           </button>
