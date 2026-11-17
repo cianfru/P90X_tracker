@@ -10,12 +10,12 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { intensityColor } from './intensity'
 import type { PlaceAgg } from './places'
+import { LOOK_BACKDROP, LOOK_MAX_ZOOM, loadStyle, type MapLook } from './mapStyles'
 
 /*
  * The training map — it fills whatever box it is given, and the Map tab gives
- * it the whole screen. Vector tiles from OpenFreeMap — free, no API key, no
- * account — after CARTO started answering keyless requests with "API KEY
- * REQUIRED" tiles, which is what broke the old map.
+ * it the whole screen. Satellite imagery by default, or a regular street map
+ * (see mapStyles); both are free and need no API key.
  *
  * Each place is a dot sized by how often you trained there and coloured by the
  * average intensity there, with a soft glow underneath and the session count
@@ -28,12 +28,6 @@ import type { PlaceAgg } from './places'
  */
 
 setWorkerUrl(workerUrl)
-
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark'
-// Re-tint the base map to sit in the app: land a touch lighter than the page,
-// sea a deep blue-black, so coastlines read without competing with the dots.
-const LAND = '#15181f'
-const SEA = '#090c13'
 
 function toGeoJSON(places: PlaceAgg[], selected: string | null) {
   const max = Math.max(1, ...places.map((p) => p.sessions.length))
@@ -69,15 +63,15 @@ export function TravelMap({
   places,
   selected,
   onSelect,
-  globe,
+  look,
   pad,
   refit,
 }: {
   places: PlaceAgg[]
   selected: string | null
   onSelect: (key: string | null) => void
-  /** Globe projection, or a flat (Mercator) map. */
-  globe: boolean
+  /** Which base map to draw. Changing it needs a remount (key on it). */
+  look: MapLook
   pad: MapPad
   /** Bump to re-frame every place (the "show all" button). */
   refit: number
@@ -88,126 +82,113 @@ export function TravelMap({
   const [failed, setFailed] = useState(false)
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
-  const globeRef = useRef(globe)
-  globeRef.current = globe
   const padRef = useRef(pad)
   padRef.current = pad
 
   // Build the map once.
   useEffect(() => {
     if (!box.current) return
-    const map = new MapLibre({
-      container: box.current,
-      style: STYLE_URL,
-      center: [51.5, 25.3],
-      zoom: 1.3,
-      attributionControl: false,
-      dragRotate: false,
-      pitchWithRotate: false,
-      touchPitch: false,
-    })
-    mapRef.current = map
-    // The style carries its own credits; keep them behind the ⓘ.
-    map.addControl(new AttributionControl({ compact: true }), 'bottom-right')
-    map.once('load', () =>
-      box.current
-        ?.querySelector('.maplibregl-ctrl-attrib')
-        ?.classList.remove('maplibregl-compact-show'),
-    )
-    map.touchZoomRotate.disableRotation()
+    let dead = false
+    let map!: MapLibre
+    // The style is fetched first (the satellite one is assembled in code),
+    // then the map is built with it.
+    const build = (style: Awaited<ReturnType<typeof loadStyle>>) => {
+      if (dead) return
+      map = new MapLibre({
+        container: box.current!,
+        style,
+        center: [51.5, 25.3],
+        zoom: 1.3,
+        maxZoom: LOOK_MAX_ZOOM[look],
+        attributionControl: false,
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+      })
+      mapRef.current = map
+      // The style carries its own credits; keep them behind the ⓘ.
+      map.addControl(new AttributionControl({ compact: true }), 'bottom-right')
+      map.once('load', () =>
+        box.current
+          ?.querySelector('.maplibregl-ctrl-attrib')
+          ?.classList.remove('maplibregl-compact-show'),
+      )
+      map.touchZoomRotate.disableRotation()
 
-    map.on('style.load', () => {
-      map.setProjection({ type: globeRef.current ? 'globe' : 'mercator' })
-      map.setSky({
-        'sky-color': '#0b1220',
-        'horizon-color': '#1d3b5c',
-        'fog-color': '#0b1220',
-        'atmosphere-blend': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          0,
-          1,
-          5,
-          0.4,
-          7,
-          0,
-        ],
+      map.on('style.load', () => {
+        map.addSource('places', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] },
+        })
+        map.addLayer({
+          id: 'place-glow',
+          type: 'circle',
+          source: 'places',
+          paint: {
+            'circle-radius': ['*', ['get', 'r'], 2.2],
+            'circle-color': ['get', 'color'],
+            'circle-opacity': 0.22,
+            'circle-blur': 1,
+          },
+        })
+        map.addLayer({
+          id: 'place-dot',
+          type: 'circle',
+          source: 'places',
+          paint: {
+            'circle-radius': ['get', 'r'],
+            'circle-color': ['get', 'color'],
+            'circle-opacity': 0.9,
+            'circle-stroke-width': ['case', ['get', 'sel'], 2.5, 1],
+            'circle-stroke-color': [
+              'case',
+              ['get', 'sel'],
+              '#ffffff',
+              'rgba(255,255,255,0.45)',
+            ],
+          },
+        })
+        map.addLayer({
+          id: 'place-count',
+          type: 'symbol',
+          source: 'places',
+          filter: ['>=', ['get', 'n'], 5],
+          layout: {
+            'text-field': ['to-string', ['get', 'n']],
+            'text-font': ['Noto Sans Regular'],
+            'text-size': 11,
+            // In a tight cluster the biggest dots keep their number and the
+            // rest drop theirs, instead of printing on top of each other.
+            'symbol-sort-key': ['-', ['get', 'n']],
+          },
+          paint: { 'text-color': '#06140d' },
+        })
+        setReady(true)
       })
-      if (map.getLayer('background')) {
-        map.setPaintProperty('background', 'background-color', LAND)
-      }
-      if (map.getLayer('water')) map.setPaintProperty('water', 'fill-color', SEA)
 
-      map.addSource('places', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
+      map.on('click', 'place-dot', (e) => {
+        const key = e.features?.[0]?.properties?.key as string | undefined
+        if (key) onSelectRef.current(key)
       })
-      map.addLayer({
-        id: 'place-glow',
-        type: 'circle',
-        source: 'places',
-        paint: {
-          'circle-radius': ['*', ['get', 'r'], 2.2],
-          'circle-color': ['get', 'color'],
-          'circle-opacity': 0.22,
-          'circle-blur': 1,
-        },
+      map.on('click', (e) => {
+        const hit = map.queryRenderedFeatures(e.point, { layers: ['place-dot'] })
+        if (!hit.length) onSelectRef.current(null)
       })
-      map.addLayer({
-        id: 'place-dot',
-        type: 'circle',
-        source: 'places',
-        paint: {
-          'circle-radius': ['get', 'r'],
-          'circle-color': ['get', 'color'],
-          'circle-opacity': 0.9,
-          'circle-stroke-width': ['case', ['get', 'sel'], 2.5, 1],
-          'circle-stroke-color': [
-            'case',
-            ['get', 'sel'],
-            '#ffffff',
-            'rgba(255,255,255,0.45)',
-          ],
-        },
+      map.on('error', (e) => {
+        // A failed style fetch (offline) leaves a blank canvas — say so instead.
+        if (!map.isStyleLoaded() && /style/i.test(String(e.error?.message))) {
+          setFailed(true)
+        }
       })
-      map.addLayer({
-        id: 'place-count',
-        type: 'symbol',
-        source: 'places',
-        filter: ['>=', ['get', 'n'], 5],
-        layout: {
-          'text-field': ['to-string', ['get', 'n']],
-          'text-font': ['Noto Sans Regular'],
-          'text-size': 11,
-          // In a tight cluster the biggest dots keep their number and the
-          // rest drop theirs, instead of printing on top of each other.
-          'symbol-sort-key': ['-', ['get', 'n']],
-        },
-        paint: { 'text-color': '#06140d' },
-      })
-      setReady(true)
-    })
-
-    map.on('click', 'place-dot', (e) => {
-      const key = e.features?.[0]?.properties?.key as string | undefined
-      if (key) onSelectRef.current(key)
-    })
-    map.on('click', (e) => {
-      const hit = map.queryRenderedFeatures(e.point, { layers: ['place-dot'] })
-      if (!hit.length) onSelectRef.current(null)
-    })
-    map.on('error', (e) => {
-      // A failed style fetch (offline) leaves a blank canvas — say so instead.
-      if (!map.isStyleLoaded() && /style/i.test(String(e.error?.message))) {
-        setFailed(true)
-      }
-    })
-
+    }
+    loadStyle(look).then(build, () => setFailed(true))
     return () => {
-      map.remove()
+      dead = true
+      map?.remove()
       mapRef.current = null
     }
+    // `look` is fixed for the life of this component (the parent keys on it).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Data: refresh dots whenever the places or the selection change.
@@ -218,10 +199,6 @@ export function TravelMap({
       toGeoJSON(places, selected),
     )
   }, [places, selected, ready])
-
-  useEffect(() => {
-    if (ready) mapRef.current?.setProjection({ type: globe ? 'globe' : 'mercator' })
-  }, [globe, ready])
 
   // The panel moved: slide the view so its centre stays in the visible part.
   useEffect(() => {
@@ -254,7 +231,7 @@ export function TravelMap({
   }, [places, selected, ready, refit])
 
   return (
-    <div className="absolute inset-0 bg-[#090c13]">
+    <div className="absolute inset-0" style={{ background: LOOK_BACKDROP[look] }}>
       {/* Sized with h-full, not inset-0: MapLibre's stylesheet makes its
           container position:relative, which would collapse an inset box. */}
       <div ref={box} className="h-full w-full" />

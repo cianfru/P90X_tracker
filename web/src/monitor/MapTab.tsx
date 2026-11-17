@@ -11,8 +11,8 @@ import {
   ChevronRight,
   ChevronUp,
   Expand,
-  Globe,
   Map as MapIcon,
+  Satellite,
   X,
 } from 'lucide-react'
 import type { Session, WorkoutTemplate } from '../db'
@@ -24,6 +24,7 @@ import {
   type Intensity,
 } from './intensity'
 import { aggregatePlaces, travelStats } from './places'
+import type { MapLook } from './mapStyles'
 import { Kpi } from './ui'
 import { SessionDetail } from './SessionDetail'
 
@@ -31,7 +32,8 @@ import { SessionDetail } from './SessionDetail'
  * The Map tab is the map: it fills the screen edge to edge, under the status
  * bar and the bottom dock, and everything else floats on it.
  *
- *   top      year chips, and two round buttons (flat / globe, show everything)
+ *   top      year chips, and two round buttons (satellite / street map,
+ *            show everything)
  *   bottom   a pull-up panel — collapsed it's one line of totals; pulled up it
  *            holds the travel numbers and the ranked places, or the sessions of
  *            the place you tapped
@@ -47,7 +49,7 @@ const TravelMap = lazy(() =>
 
 type Snap = 'peek' | 'half' | 'full'
 const PEEK = 86
-const GLOBE_KEY = 'p90x-map-globe'
+const LOOK_KEY = 'p90x-map-look'
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
@@ -67,11 +69,11 @@ export function MapTab({
   const [selected, setSelected] = useState<string | null>(null)
   const [snap, setSnap] = useState<Snap>('peek')
   const [refit, setRefit] = useState(0)
-  const [globe, setGlobe] = useState(() => {
+  const [look, setLook] = useState<MapLook>(() => {
     try {
-      return localStorage.getItem(GLOBE_KEY) === '1'
+      return localStorage.getItem(LOOK_KEY) === 'map' ? 'map' : 'satellite'
     } catch {
-      return false
+      return 'satellite'
     }
   })
 
@@ -168,14 +170,15 @@ export function MapTab({
     setSelected(key)
     setSnap(key ? 'half' : 'peek')
   }
-  const toggleGlobe = () =>
-    setGlobe((g) => {
+  const toggleLook = () =>
+    setLook((l) => {
+      const next: MapLook = l === 'satellite' ? 'map' : 'satellite'
       try {
-        localStorage.setItem(GLOBE_KEY, g ? '0' : '1')
+        localStorage.setItem(LOOK_KEY, next)
       } catch {
         /* preference just won't persist */
       }
-      return !g
+      return next
     })
 
   const mapBtn =
@@ -196,10 +199,11 @@ export function MapTab({
           }
         >
           <TravelMap
+            key={look}
+            look={look}
             places={places}
             selected={selected}
             onSelect={select}
-            globe={globe}
             pad={pad}
             refit={refit}
           />
@@ -234,11 +238,13 @@ export function MapTab({
         </div>
         <div className="mt-2 flex flex-col items-end gap-2 px-3">
           <button
-            onClick={toggleGlobe}
-            aria-label={globe ? 'switch to flat map' : 'switch to globe'}
+            onClick={toggleLook}
+            aria-label={
+              look === 'satellite' ? 'switch to street map' : 'switch to satellite'
+            }
             className={mapBtn}
           >
-            {globe ? <MapIcon size={18} /> : <Globe size={18} />}
+            {look === 'satellite' ? <MapIcon size={18} /> : <Satellite size={18} />}
           </button>
           <button
             onClick={() => {

@@ -117,6 +117,16 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          // Satellite imagery never changes, so serve it straight from cache.
+          {
+            urlPattern: /^https:\/\/tiles\.maps\.eox\.at\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'p90x-map-imagery',
+              expiration: { maxEntries: 800, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
       devOptions: {
