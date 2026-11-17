@@ -12,17 +12,19 @@ import { intensityColor } from './intensity'
 import type { PlaceAgg } from './places'
 
 /*
- * The training globe. Vector tiles from OpenFreeMap — free, no API key, no
+ * The training map — it fills whatever box it is given, and the Map tab gives
+ * it the whole screen. Vector tiles from OpenFreeMap — free, no API key, no
  * account — after CARTO started answering keyless requests with "API KEY
  * REQUIRED" tiles, which is what broke the old map.
  *
  * Each place is a dot sized by how often you trained there and coloured by the
  * average intensity there, with a soft glow underneath and the session count
- * printed on the busy ones. Tapping a dot selects the place; the list below
- * the map selects too, and the globe flies to whatever is selected.
+ * printed on the busy ones. Tapping a dot selects the place, tapping empty map
+ * clears it, and the camera flies to whatever is selected.
  *
- * Two-finger gestures pan and zoom, so a one-finger swipe still scrolls the
- * page on a phone instead of getting trapped in the map.
+ * `pad` is the part of the screen covered by overlays (the year chips on top,
+ * the pull-up panel below): the camera centres in what's left, so a selected
+ * place never lands underneath the panel.
  */
 
 setWorkerUrl(workerUrl)
@@ -58,14 +60,27 @@ function boundsOf(places: PlaceAgg[]): LngLatBounds | null {
   return b
 }
 
+export interface MapPad {
+  top: number
+  bottom: number
+}
+
 export function TravelMap({
   places,
   selected,
   onSelect,
+  globe,
+  pad,
+  refit,
 }: {
   places: PlaceAgg[]
   selected: string | null
   onSelect: (key: string | null) => void
+  /** Globe projection, or a flat (Mercator) map. */
+  globe: boolean
+  pad: MapPad
+  /** Bump to re-frame every place (the "show all" button). */
+  refit: number
 }) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibre | null>(null)
@@ -73,6 +88,10 @@ export function TravelMap({
   const [failed, setFailed] = useState(false)
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
+  const globeRef = useRef(globe)
+  globeRef.current = globe
+  const padRef = useRef(pad)
+  padRef.current = pad
 
   // Build the map once.
   useEffect(() => {
@@ -83,14 +102,12 @@ export function TravelMap({
       center: [51.5, 25.3],
       zoom: 1.3,
       attributionControl: false,
-      cooperativeGestures: true,
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
     })
     mapRef.current = map
-    // The style carries its own credits; keep them behind the ⓘ so they
-    // don't sit on top of the globe on a phone-sized map.
+    // The style carries its own credits; keep them behind the ⓘ.
     map.addControl(new AttributionControl({ compact: true }), 'bottom-right')
     map.once('load', () =>
       box.current
@@ -100,7 +117,7 @@ export function TravelMap({
     map.touchZoomRotate.disableRotation()
 
     map.on('style.load', () => {
-      map.setProjection({ type: 'globe' })
+      map.setProjection({ type: globeRef.current ? 'globe' : 'mercator' })
       map.setSky({
         'sky-color': '#0b1220',
         'horizon-color': '#1d3b5c',
@@ -202,31 +219,49 @@ export function TravelMap({
     )
   }, [places, selected, ready])
 
-  // Camera: frame everything, or fly to the selected place.
+  useEffect(() => {
+    if (ready) mapRef.current?.setProjection({ type: globe ? 'globe' : 'mercator' })
+  }, [globe, ready])
+
+  // The panel moved: slide the view so its centre stays in the visible part.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
+    map.easeTo({ padding: { ...pad, left: 0, right: 0 }, duration: 300 })
+  }, [pad.top, pad.bottom, ready]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Camera: frame everything, or fly to the selected place. Declared after
+  // the padding effect so that when both fire, this one has the last word.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    const padding = { ...padRef.current, left: 0, right: 0 }
     const place = places.find((p) => p.key === selected)
     if (place) {
       map.flyTo({
         center: [place.lon, place.lat],
         zoom: Math.max(map.getZoom(), 5),
+        padding,
         duration: 1400,
         essential: true,
       })
       return
     }
     const b = boundsOf(places)
-    if (b) map.fitBounds(b, { padding: 48, maxZoom: 5, duration: 900 })
-  }, [places, selected, ready])
+    if (!b) return
+    map.setPadding(padding)
+    map.fitBounds(b, { padding: 56, maxZoom: 5, duration: 900 })
+  }, [places, selected, ready, refit])
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-hair bg-[#05070b]">
-      <div ref={box} style={{ height: 360 }} />
+    <div className="absolute inset-0 bg-[#090c13]">
+      {/* Sized with h-full, not inset-0: MapLibre's stylesheet makes its
+          container position:relative, which would collapse an inset box. */}
+      <div ref={box} className="h-full w-full" />
       {failed && (
-        <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-ink-3">
-          The map needs a connection the first time — your places and stats below
-          still work offline.
+        <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-xs text-ink-3">
+          The map needs a connection the first time — your places and stats still
+          work offline, in the panel below.
         </div>
       )}
     </div>

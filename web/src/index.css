@@ -240,3 +240,8 @@ body::before {
 .maplibregl-ctrl-attrib-button {
   filter: invert(0.85);
 }
+
+/* Full-screen map: lift the ⓘ credits clear of the dock and the panel. */
+.immersive-map .maplibregl-ctrl-bottom-right {
+  bottom: var(--map-ctrl-bottom, 0px);
+}

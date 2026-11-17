@@ -144,67 +144,70 @@ export default function App() {
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col">
       {splash !== 'gone' && <Splash fading={splash === 'fade'} />}
-      <header className="frost sticky top-0 z-20 flex items-center justify-between gap-3 px-4 pt-5 pb-3">
-        <img
-          src="/header-banner.png"
-          alt="P90X Workout Logger"
-          className="h-16 w-auto shrink-0 select-none"
-        />
-        <div className="flex items-center gap-2">
-          {importPct !== null ? (
-            <span className="nums flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-300">
-              <Loader2 size={13} className="animate-spin" />
-              {importPct}%
-            </span>
-          ) : syncState.enabled ? (
-            <button
-              onClick={() => setShowAccount(true)}
-              title="Sync status — tap to manage"
-              className={`nums press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${
-                syncState.pending > 0
-                  ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
-                  : 'border-[#34f5a0]/30 bg-[#34f5a0]/10 text-[#34f5a0]'
-              }`}
-            >
-              <Cloud
-                size={13}
-                className={syncState.syncing ? 'animate-pulse' : ''}
-              />
-              {syncState.pending > 0
-                ? `Syncing ${syncState.pending}`
-                : lastSyncAt
-                  ? fmtAgo(lastSyncAt)
-                  : 'Synced'}
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowAccount(true)}
-              title="Not saved to an account — tap to sign in"
-              className="press flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-amber-300"
-            >
-              <CloudOff size={13} /> Local only
-            </button>
-          )}
-          <button
-            onClick={() => setShowAccount(true)}
-            aria-label="account"
-            className="press flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-hair bg-white/[0.04] text-ink-2"
-          >
-            {cachedAccount()?.picture ? (
-              <img
-                src={cachedAccount()!.picture}
-                alt=""
-                className="h-full w-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+      {/* The Map tab is edge-to-edge map: no header, no page padding. */}
+      {view !== 'map' && (
+        <header className="frost sticky top-0 z-20 flex items-center justify-between gap-3 px-4 pt-5 pb-3">
+          <img
+            src="/header-banner.png"
+            alt="P90X Workout Logger"
+            className="h-16 w-auto shrink-0 select-none"
+          />
+          <div className="flex items-center gap-2">
+            {importPct !== null ? (
+              <span className="nums flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-300">
+                <Loader2 size={13} className="animate-spin" />
+                {importPct}%
+              </span>
+            ) : syncState.enabled ? (
+              <button
+                onClick={() => setShowAccount(true)}
+                title="Sync status — tap to manage"
+                className={`nums press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${
+                  syncState.pending > 0
+                    ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
+                    : 'border-[#34f5a0]/30 bg-[#34f5a0]/10 text-[#34f5a0]'
+                }`}
+              >
+                <Cloud
+                  size={13}
+                  className={syncState.syncing ? 'animate-pulse' : ''}
+                />
+                {syncState.pending > 0
+                  ? `Syncing ${syncState.pending}`
+                  : lastSyncAt
+                    ? fmtAgo(lastSyncAt)
+                    : 'Synced'}
+              </button>
             ) : (
-              <UserRound size={17} />
+              <button
+                onClick={() => setShowAccount(true)}
+                title="Not saved to an account — tap to sign in"
+                className="press flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-amber-300"
+              >
+                <CloudOff size={13} /> Local only
+              </button>
             )}
-          </button>
-        </div>
-      </header>
+            <button
+              onClick={() => setShowAccount(true)}
+              aria-label="account"
+              className="press flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-hair bg-white/[0.04] text-ink-2"
+            >
+              {cachedAccount()?.picture ? (
+                <img
+                  src={cachedAccount()!.picture}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <UserRound size={17} />
+              )}
+            </button>
+          </div>
+        </header>
+      )}
 
-      <main className="flex-1 px-4 pb-32">
+      <main className={view === 'map' ? 'flex-1' : 'flex-1 px-4 pb-32'}>
         {view === 'home' ? (
           <PullToRefresh onRefresh={() => window.location.reload()}>
             <Home onOpen={setSessionId} onMix={() => setShowMixer(true)} />
